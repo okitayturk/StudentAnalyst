@@ -24,7 +24,6 @@ const ExamDetails: React.FC = () => {
               const foundStudent = await db.getStudent(foundExam.studentId);
               setStudent(foundStudent || null);
             } else {
-              // Exam not found
               navigate('/students');
             }
         } catch (e) {
@@ -45,7 +44,6 @@ const ExamDetails: React.FC = () => {
     return <div className="p-8 text-center text-slate-500">Veri bulunamadı.</div>;
   }
 
-  // Prepare data for charts and table
   const subjects = [
     { key: 'turkish', label: 'Türkçe', color: '#ef4444' },
     { key: 'math', label: 'Matematik', color: '#3b82f6' },
@@ -55,9 +53,8 @@ const ExamDetails: React.FC = () => {
     { key: 'rel', label: 'Din Kül.', color: '#06b6d4' },
   ];
 
-  // Filter out subjects that don't exist in the data (e.g. for TYT where lang might be 0/null if not entered)
   const chartData = subjects.map(sub => {
-    // @ts-ignore - Dynamic access to optional properties
+    // @ts-ignore
     const d = exam[`${sub.key}Correct`] || 0;
     // @ts-ignore
     const y = exam[`${sub.key}Incorrect`] || 0;
@@ -72,14 +69,12 @@ const ExamDetails: React.FC = () => {
       fullKey: sub.key
     };
   }).filter(item => item.Dogru > 0 || item.Yanlis > 0 || item.Net > 0); 
-  // Only show subjects that have data to keep charts clean
 
   const totalCorrect = chartData.reduce((acc, curr) => acc + curr.Dogru, 0);
   const totalIncorrect = chartData.reduce((acc, curr) => acc + curr.Yanlis, 0);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
         <div>
            <Link to="/students" className="inline-flex items-center text-slate-500 hover:text-indigo-600 mb-2 transition-colors">
@@ -102,7 +97,6 @@ const ExamDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
             <div className="p-3 bg-green-100 text-green-600 rounded-lg">
@@ -136,7 +130,6 @@ const ExamDetails: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Detailed Table */}
         <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="p-4 border-b border-slate-100 bg-slate-50">
                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -168,12 +161,12 @@ const ExamDetails: React.FC = () => {
             </div>
         </div>
 
-        {/* Chart */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 p-6">
             <h3 className="font-bold text-slate-800 mb-6">Net Karşılaştırması</h3>
-            <div className="h-80">
+            {/* Explicit height */}
+            <div className="w-full h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="name" />
                         <YAxis />
@@ -184,7 +177,7 @@ const ExamDetails: React.FC = () => {
                         <Legend />
                         <Bar dataKey="Dogru" name="Doğru" fill="#22c55e" stackId="a" radius={[0, 0, 4, 4]} />
                         <Bar dataKey="Yanlis" name="Yanlış" fill="#ef4444" stackId="a" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Net" name="Net Değeri" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={20} />
+                        <Bar dataKey="Net" name="Net Değeri" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={30} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>

@@ -142,7 +142,8 @@ const Students: React.FC = () => {
 
                 <div>
                     <h3 className="text-lg font-semibold mb-4 text-slate-800">Kişisel Gelişim Grafiği</h3>
-                    <div className="h-64 w-full bg-slate-50 rounded-lg p-4 border border-slate-100">
+                    {/* Explicit Height Container */}
+                    <div className="w-full h-80 bg-slate-50 rounded-lg p-4 border border-slate-100 mb-6">
                         {studentStats.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={studentStats}>
@@ -152,7 +153,7 @@ const Students: React.FC = () => {
                                         contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', color: '#1e293b' }}
                                         itemStyle={{ color: '#4f46e5' }}
                                     />
-                                    <Bar dataKey="score" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="score" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={40} />
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
