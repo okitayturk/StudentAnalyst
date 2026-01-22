@@ -172,7 +172,8 @@ const Dashboard: React.FC = () => {
         totals.biology += curr.biologyNet || 0;
     });
     
-    const data = [];
+    // Explicitly type the array to avoid "Variable 'data' implicitly has type 'any[]'" error
+    const data: { name: string; value: number }[] = [];
 
     // Helper to push only if relevant or has value
     const pushIfRelevant = (key: keyof typeof totals, name: string) => {
