@@ -1,70 +1,97 @@
-import { Student, ExamResult, ExamType } from '../types';
+import { firestore } from './firebase';
+import { 
+  collection, 
+  getDocs, 
+  addDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where, 
+  getDoc 
+} from 'firebase/firestore';
+import { Student, ExamResult } from '../types';
 
-// Keys for LocalStorage
-const STORAGE_KEYS = {
-  STUDENTS: 'app_students_v1',
-  EXAMS: 'app_exams_v1',
-};
-
-// Helper to generate ID
-const generateId = () => Math.random().toString(36).substr(2, 9);
+const STUDENTS_COLLECTION = 'students';
+const EXAMS_COLLECTION = 'exams';
 
 export const db = {
   // --- Students ---
-  getStudents: (): Student[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-    return data ? JSON.parse(data) : [];
+  getStudents: async (): Promise<Student[]> => {
+    const querySnapshot = await getDocs(collection(firestore, STUDENTS_COLLECTION));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
   },
 
-  addStudent: (student: Omit<Student, 'id' | 'createdAt'>): Student => {
-    const students = db.getStudents();
-    const newStudent: Student = {
+  getStudent: async (id: string): Promise<Student | null> => {
+    const docRef = doc(firestore, STUDENTS_COLLECTION, id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Student;
+    }
+    return null;
+  },
+
+  addStudent: async (student: Omit<Student, 'id' | 'createdAt'>): Promise<Student> => {
+    const newStudentData = {
       ...student,
-      id: generateId(),
       createdAt: Date.now(),
     };
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify([...students, newStudent]));
-    return newStudent;
+    const docRef = await addDoc(collection(firestore, STUDENTS_COLLECTION), newStudentData);
+    return { id: docRef.id, ...newStudentData } as Student;
   },
 
-  deleteStudent: (id: string) => {
-    const students = db.getStudents().filter((s) => s.id !== id);
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+  deleteStudent: async (id: string) => {
+    // 1. Delete the student
+    await deleteDoc(doc(firestore, STUDENTS_COLLECTION, id));
     
-    // Also delete associated exams
-    const exams = db.getExams().filter(e => e.studentId !== id);
-    localStorage.setItem(STORAGE_KEYS.EXAMS, JSON.stringify(exams));
+    // 2. Delete associated exams
+    const examsQuery = query(collection(firestore, EXAMS_COLLECTION), where("studentId", "==", id));
+    const examsSnapshot = await getDocs(examsQuery);
+    
+    const deletePromises = examsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
   },
 
   // --- Exams ---
-  getExams: (): ExamResult[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.EXAMS);
-    return data ? JSON.parse(data) : [];
+  getExams: async (): Promise<ExamResult[]> => {
+    const querySnapshot = await getDocs(collection(firestore, EXAMS_COLLECTION));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExamResult));
   },
 
-  getExamsByStudent: (studentId: string): ExamResult[] => {
-    return db.getExams().filter((e) => e.studentId === studentId);
+  getExam: async (id: string): Promise<ExamResult | null> => {
+      const docRef = doc(firestore, EXAMS_COLLECTION, id);
+      const docSnap = await getDoc(docRef);
+      if(docSnap.exists()) {
+          return { id: docSnap.id, ...docSnap.data() } as ExamResult;
+      }
+      return null;
   },
 
-  addExam: (exam: Omit<ExamResult, 'id'>): ExamResult => {
-    const exams = db.getExams();
-    const newExam: ExamResult = {
-      ...exam,
-      id: generateId(),
-    };
-    localStorage.setItem(STORAGE_KEYS.EXAMS, JSON.stringify([...exams, newExam]));
-    return newExam;
+  getExamsByStudent: async (studentId: string): Promise<ExamResult[]> => {
+    const q = query(collection(firestore, EXAMS_COLLECTION), where("studentId", "==", studentId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExamResult));
   },
 
-  deleteExam: (id: string) => {
-    const exams = db.getExams().filter((e) => e.id !== id);
-    localStorage.setItem(STORAGE_KEYS.EXAMS, JSON.stringify(exams));
+  addExam: async (exam: Omit<ExamResult, 'id'>): Promise<ExamResult> => {
+    const docRef = await addDoc(collection(firestore, EXAMS_COLLECTION), exam);
+    return { id: docRef.id, ...exam } as ExamResult;
+  },
+
+  deleteExam: async (id: string) => {
+    await deleteDoc(doc(firestore, EXAMS_COLLECTION, id));
   },
   
   // --- Analysis Helpers ---
-  getMonthlyAverages: (studentId?: string) => {
-    const exams = studentId ? db.getExamsByStudent(studentId) : db.getExams();
-    // Group by Month (YYYY-MM)
+  getMonthlyAverages: async (studentId?: string) => {
+    // Fetch exams first
+    let exams: ExamResult[] = [];
+    if (studentId) {
+        exams = await db.getExamsByStudent(studentId);
+    } else {
+        exams = await db.getExams();
+    }
+
+    // Client-side aggregation
     const grouped: Record<string, { total: number; count: number }> = {};
     
     exams.forEach(exam => {
@@ -80,8 +107,14 @@ export const db = {
     }));
   },
 
-  getSubjectAverages: (studentId?: string) => {
-      const exams = studentId ? db.getExamsByStudent(studentId) : db.getExams();
+  getSubjectAverages: async (studentId?: string) => {
+      let exams: ExamResult[] = [];
+      if (studentId) {
+          exams = await db.getExamsByStudent(studentId);
+      } else {
+          exams = await db.getExams();
+      }
+
       if (exams.length === 0) return [];
 
       const totals = exams.reduce((acc, curr) => ({

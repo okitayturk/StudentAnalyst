@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
-import { Student } from '../types';
+import { Student, ExamResult } from '../types';
 import { Trash2, UserPlus, Search, Users, Eye } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
@@ -9,10 +9,12 @@ const Students: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
   
   // Selected student for details
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [studentStats, setStudentStats] = useState<any[]>([]);
+  const [studentExams, setStudentExams] = useState<ExamResult[]>([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -25,35 +27,51 @@ const Students: React.FC = () => {
     loadStudents();
   }, []);
 
-  const loadStudents = () => {
-    setStudents(db.getStudents());
+  const loadStudents = async () => {
+    setLoading(true);
+    const data = await db.getStudents();
+    setStudents(data);
+    setLoading(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.fullName || !formData.schoolNumber) return;
     
-    db.addStudent(formData);
+    await db.addStudent(formData);
     setIsModalOpen(false);
     setFormData({ fullName: '', gradeLevel: '8', schoolNumber: '' });
     loadStudents();
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Öğrenciyi silmek istediğinize emin misiniz? Tüm deneme verileri de silinecektir.')) {
-        db.deleteStudent(id);
+        await db.deleteStudent(id);
         loadStudents();
         if (selectedStudent?.id === id) {
             setSelectedStudent(null);
+            setStudentStats([]);
+            setStudentExams([]);
         }
     }
   };
 
-  const handleSelectStudent = (student: Student) => {
+  const handleSelectStudent = async (student: Student) => {
       setSelectedStudent(student);
-      const stats = db.getMonthlyAverages(student.id);
+      const stats = await db.getMonthlyAverages(student.id);
+      const exams = await db.getExamsByStudent(student.id);
       setStudentStats(stats);
+      setStudentExams(exams);
+  };
+
+  const handleDeleteExam = async (examId: string) => {
+      if(confirm('Silmek istiyor musunuz?')) {
+          await db.deleteExam(examId);
+          if (selectedStudent) {
+              handleSelectStudent(selectedStudent); // Refresh details
+          }
+      }
   };
 
   const filteredStudents = students.filter(s => 
@@ -89,7 +107,9 @@ const Students: React.FC = () => {
         </div>
 
         <div className="overflow-y-auto flex-1 p-2 space-y-2">
-            {filteredStudents.length === 0 ? (
+            {loading ? (
+                <div className="text-center p-4 text-slate-400">Yükleniyor...</div>
+            ) : filteredStudents.length === 0 ? (
                 <p className="text-center text-slate-400 text-sm mt-4">Kayıtlı öğrenci yok.</p>
             ) : (
                 filteredStudents.map(student => (
@@ -155,7 +175,7 @@ const Students: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {db.getExamsByStudent(selectedStudent.id).sort((a,b) => b.examDate.localeCompare(a.examDate)).map(exam => (
+                                    {studentExams.sort((a,b) => b.examDate.localeCompare(a.examDate)).map(exam => (
                                         <tr key={exam.id} className="border-b border-slate-100 text-slate-700 hover:bg-slate-50 transition-colors">
                                             <td className="p-3">{exam.examDate}</td>
                                             <td className="p-3 font-medium">{exam.examName}</td>
@@ -172,12 +192,7 @@ const Students: React.FC = () => {
                                             </td>
                                             <td className="p-3 text-center">
                                                 <button 
-                                                    onClick={() => {
-                                                        if(confirm('Silmek istiyor musunuz?')) {
-                                                            db.deleteExam(exam.id);
-                                                            handleSelectStudent(selectedStudent);
-                                                        }
-                                                    }}
+                                                    onClick={() => handleDeleteExam(exam.id)}
                                                     className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition"
                                                 >
                                                     <Trash2 size={16}/>
@@ -187,7 +202,7 @@ const Students: React.FC = () => {
                                     ))}
                                 </tbody>
                             </table>
-                            {db.getExamsByStudent(selectedStudent.id).length === 0 && (
+                            {studentExams.length === 0 && (
                                 <p className="text-center p-4 text-slate-400">Kayıt bulunamadı.</p>
                             )}
                         </div>

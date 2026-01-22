@@ -3,32 +3,46 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../services/db';
 import { ExamResult, Student } from '../types';
 import { ArrowLeft, Calendar, FileText, TrendingUp, CheckCircle, XCircle, Award } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const ExamDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [exam, setExam] = useState<ExamResult | null>(null);
   const [student, setStudent] = useState<Student | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
-    const allExams = db.getExams();
-    const foundExam = allExams.find(e => e.id === id);
-    
-    if (foundExam) {
-      setExam(foundExam);
-      const allStudents = db.getStudents();
-      const foundStudent = allStudents.find(s => s.id === foundExam.studentId);
-      setStudent(foundStudent || null);
-    } else {
-      // Exam not found
-      navigate('/students');
-    }
+    const fetchData = async () => {
+        if (!id) return;
+        setLoading(true);
+        try {
+            const foundExam = await db.getExam(id);
+            
+            if (foundExam) {
+              setExam(foundExam);
+              const foundStudent = await db.getStudent(foundExam.studentId);
+              setStudent(foundStudent || null);
+            } else {
+              // Exam not found
+              navigate('/students');
+            }
+        } catch (e) {
+            console.error(e);
+            navigate('/students');
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchData();
   }, [id, navigate]);
 
-  if (!exam || !student) {
+  if (loading) {
     return <div className="p-8 text-center text-slate-500">Yükleniyor...</div>;
+  }
+
+  if (!exam || !student) {
+    return <div className="p-8 text-center text-slate-500">Veri bulunamadı.</div>;
   }
 
   // Prepare data for charts and table
@@ -42,7 +56,6 @@ const ExamDetails: React.FC = () => {
   ];
 
   // Filter out subjects that don't exist in the data (e.g. for TYT where lang might be 0/null if not entered)
-  // Or simply show all but handle zeros.
   const chartData = subjects.map(sub => {
     // @ts-ignore - Dynamic access to optional properties
     const d = exam[`${sub.key}Correct`] || 0;
@@ -116,7 +129,6 @@ const ExamDetails: React.FC = () => {
             <div>
                 <p className="text-sm text-slate-500">Toplam Net</p>
                 <p className="text-2xl font-bold text-slate-800">
-                    {/* Sum of nets from chartData might differ slightly due to float precision, usually prefer pre-calc stats but chartData sum is fine for display */}
                      {chartData.reduce((acc, curr) => acc + curr.Net, 0).toFixed(2)}
                 </p>
             </div>

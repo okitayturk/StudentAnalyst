@@ -9,27 +9,45 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({ studentCount: 0, examCount: 0, avgScore: 0 });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [subjectData, setSubjectData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load data
-    const students = db.getStudents();
-    const exams = db.getExams();
-    
-    // Stats
-    const totalScore = exams.reduce((acc, curr) => acc + curr.totalScore, 0);
-    const avg = exams.length > 0 ? Math.round(totalScore / exams.length) : 0;
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Load raw data for stats
+        const students = await db.getStudents();
+        const exams = await db.getExams();
+        
+        // Stats Calc
+        const totalScore = exams.reduce((acc, curr) => acc + curr.totalScore, 0);
+        const avg = exams.length > 0 ? Math.round(totalScore / exams.length) : 0;
 
-    setStats({
-        studentCount: students.length,
-        examCount: exams.length,
-        avgScore: avg
-    });
+        setStats({
+            studentCount: students.length,
+            examCount: exams.length,
+            avgScore: avg
+        });
 
-    // Chart Data
-    setMonthlyData(db.getMonthlyAverages());
-    setSubjectData(db.getSubjectAverages());
+        // Chart Data
+        const mData = await db.getMonthlyAverages();
+        const sData = await db.getSubjectAverages();
+        
+        setMonthlyData(mData);
+        setSubjectData(sData);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchData();
   }, []);
+
+  if (loading) {
+    return <div className="p-8 text-center text-slate-500">Veriler yükleniyor...</div>;
+  }
 
   return (
     <div className="space-y-6">

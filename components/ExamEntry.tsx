@@ -8,6 +8,7 @@ const ExamEntry: React.FC = () => {
   const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [successMsg, setSuccessMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // State structure optimized for detailed entry
   const [studentId, setStudentId] = useState('');
@@ -27,9 +28,12 @@ const ExamEntry: React.FC = () => {
   });
 
   useEffect(() => {
-    const s = db.getStudents();
-    setStudents(s);
-    if (s.length > 0) setStudentId(s[0].id);
+    const fetchStudents = async () => {
+        const s = await db.getStudents();
+        setStudents(s);
+        if (s.length > 0) setStudentId(s[0].id);
+    };
+    fetchStudents();
   }, []);
 
   // Helper to calculate Net: 3 Wrong removes 1 Right
@@ -49,7 +53,7 @@ const ExamEntry: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId) {
         alert("Lütfen bir öğrenci seçiniz.");
@@ -60,6 +64,8 @@ const ExamEntry: React.FC = () => {
         alert("Lütfen deneme puanını giriniz.");
         return;
     }
+    
+    setIsSubmitting(true);
 
     // Prepare data object
     const examData = {
@@ -86,13 +92,19 @@ const ExamEntry: React.FC = () => {
         relCorrect: subjects.rel.d, relIncorrect: subjects.rel.y,
     };
 
-    db.addExam(examData);
-
-    setSuccessMsg('Deneme başarıyla kaydedildi!');
-    setTimeout(() => {
-        setSuccessMsg('');
-        navigate('/students'); 
-    }, 1500);
+    try {
+        await db.addExam(examData);
+        setSuccessMsg('Deneme başarıyla kaydedildi!');
+        setTimeout(() => {
+            setSuccessMsg('');
+            navigate('/students'); 
+        }, 1500);
+    } catch (err) {
+        console.error(err);
+        alert("Hata oluştu.");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   // Subject Input Component to reduce repetition
@@ -249,10 +261,11 @@ const ExamEntry: React.FC = () => {
 
                         <button 
                             type="submit"
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold text-lg transition shadow-lg hover:shadow-xl flex items-center gap-2 h-[54px]"
+                            disabled={isSubmitting}
+                            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-8 py-3 rounded-xl font-bold text-lg transition shadow-lg hover:shadow-xl flex items-center gap-2 h-[54px]"
                         >
                             <Save size={22} />
-                            Kaydet
+                            {isSubmitting ? 'Kaydediliyor...' : 'Kaydet'}
                         </button>
                     </div>
                 </div>
