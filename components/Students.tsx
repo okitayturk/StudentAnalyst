@@ -2,8 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
 import { Student, ExamResult } from '../types';
 import { Trash2, UserPlus, Search, Users, Eye } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Link } from 'react-router-dom';
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        return (
+            <div className="bg-white p-3 border border-slate-200 shadow-lg rounded-lg text-sm">
+                <p className="font-bold text-slate-800 mb-1">{data.examName}</p>
+                <p className="text-xs text-slate-500 mb-2">{data.fullDate} • {data.type}</p>
+                <div className="flex items-center gap-2">
+                     <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                     <span className="font-semibold text-slate-700">Puan: {Number(data.score).toFixed(3)}</span>
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
 
 const Students: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -59,8 +76,23 @@ const Students: React.FC = () => {
 
   const handleSelectStudent = async (student: Student) => {
       setSelectedStudent(student);
-      const stats = await db.getMonthlyAverages(student.id);
       const exams = await db.getExamsByStudent(student.id);
+      
+      // Sort exams by date for the chart
+      const sortedExams = [...exams].sort((a, b) => a.examDate.localeCompare(b.examDate));
+
+      const stats = sortedExams.map(exam => {
+          // Format date as DD/MM for chart labels
+          const [year, month, day] = exam.examDate.split('-');
+          return {
+              name: `${day}/${month}`,
+              fullDate: exam.examDate, // Keep full date for tooltip
+              score: exam.totalScore,
+              examName: exam.examName,
+              type: exam.type
+          };
+      });
+
       setStudentStats(stats);
       setStudentExams(exams);
   };
@@ -146,14 +178,31 @@ const Students: React.FC = () => {
                     <div className="w-full h-80 bg-slate-50 rounded-lg p-4 border border-slate-100 mb-6">
                         {studentStats.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={studentStats}>
-                                    <XAxis dataKey="name" fontSize={12} stroke="#64748b" />
-                                    <YAxis fontSize={12} stroke="#64748b" />
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', color: '#1e293b' }}
-                                        itemStyle={{ color: '#4f46e5' }}
+                                <BarChart data={studentStats} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                    <XAxis 
+                                        dataKey="name" 
+                                        fontSize={11} 
+                                        stroke="#64748b" 
+                                        tickLine={false}
+                                        axisLine={false}
+                                        dy={10}
                                     />
-                                    <Bar dataKey="score" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={40} />
+                                    <YAxis 
+                                        fontSize={11} 
+                                        stroke="#64748b" 
+                                        tickLine={false}
+                                        axisLine={false}
+                                        domain={[0, 'auto']}
+                                    />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9' }} />
+                                    <Bar 
+                                        dataKey="score" 
+                                        fill="#4f46e5" 
+                                        radius={[4, 4, 0, 0]} 
+                                        barSize={40} 
+                                        activeBar={{ fill: '#4338ca' }}
+                                    />
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
