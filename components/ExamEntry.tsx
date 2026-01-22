@@ -17,14 +17,26 @@ const ExamEntry: React.FC = () => {
   const [examType, setExamType] = useState<ExamType>(ExamType.LGS);
   const [totalScore, setTotalScore] = useState<string>(''); // Manual entry as string initially
 
-  // Subject States (D: Doğru, Y: Yanlış)
+  // Extended Subject State for all exam types
   const [subjects, setSubjects] = useState({
+    // LGS & TYT
     turkish: { d: 0, y: 0 },
     math: { d: 0, y: 0 },
     science: { d: 0, y: 0 },
     social: { d: 0, y: 0 },
-    lang: { d: 0, y: 0 }, // Yabancı Dil
-    rel: { d: 0, y: 0 }   // Din Kültürü
+    lang: { d: 0, y: 0 }, 
+    rel: { d: 0, y: 0 },
+    
+    // AYT Specific
+    literature: { d: 0, y: 0 },
+    history1: { d: 0, y: 0 },
+    geography1: { d: 0, y: 0 },
+    history2: { d: 0, y: 0 },
+    geography2: { d: 0, y: 0 },
+    philosophy: { d: 0, y: 0 },
+    physics: { d: 0, y: 0 },
+    chemistry: { d: 0, y: 0 },
+    biology: { d: 0, y: 0 },
   });
 
   useEffect(() => {
@@ -36,9 +48,10 @@ const ExamEntry: React.FC = () => {
     fetchStudents();
   }, []);
 
-  // Helper to calculate Net: 3 Wrong removes 1 Right
-  const calculateNet = (d: number, y: number) => {
-    const net = d - (y / 3);
+  // Helper to calculate Net: 3 Wrong removes 1 Right (LGS), 4 Wrong removes 1 Right (YKS)
+  const calculateNet = (d: number, y: number, type: ExamType) => {
+    const factor = type === ExamType.LGS ? 3 : 4;
+    const net = d - (y / factor);
     return Math.max(0, parseFloat(net.toFixed(2))); // Prevent negative nets
   };
 
@@ -51,6 +64,53 @@ const ExamEntry: React.FC = () => {
             [field]: numValue
         }
     }));
+  };
+
+  const getActiveSubjects = (): { key: keyof typeof subjects, label: string }[] => {
+      switch (examType) {
+          case ExamType.LGS:
+          case ExamType.GENERAL:
+              return [
+                  { key: 'turkish', label: 'Türkçe' },
+                  { key: 'math', label: 'Matematik' },
+                  { key: 'science', label: 'Fen Bilimleri' },
+                  { key: 'social', label: 'İnkılap / Sosyal' },
+                  { key: 'lang', label: 'Yabancı Dil' },
+                  { key: 'rel', label: 'Din Kültürü' },
+              ];
+          case ExamType.TYT:
+              return [
+                  { key: 'turkish', label: 'Türkçe' },
+                  { key: 'math', label: 'Matematik' },
+                  { key: 'science', label: 'Fen Bilimleri' },
+                  { key: 'social', label: 'Sosyal Bilimler' },
+              ];
+          case ExamType.AYT_EA:
+              return [
+                  { key: 'literature', label: 'Türk Dili ve Edebiyatı' },
+                  { key: 'history1', label: 'Tarih-1' },
+                  { key: 'geography1', label: 'Coğrafya-1' },
+                  { key: 'math', label: 'Matematik' },
+              ];
+          case ExamType.AYT_SAY:
+              return [
+                  { key: 'math', label: 'Matematik' },
+                  { key: 'physics', label: 'Fizik' },
+                  { key: 'chemistry', label: 'Kimya' },
+                  { key: 'biology', label: 'Biyoloji' },
+              ];
+          case ExamType.AYT_SOZ:
+              return [
+                  { key: 'literature', label: 'Türk Dili ve Edebiyatı' },
+                  { key: 'history1', label: 'Tarih-1' },
+                  { key: 'geography1', label: 'Coğrafya-1' },
+                  { key: 'history2', label: 'Tarih-2' },
+                  { key: 'geography2', label: 'Coğrafya-2' },
+                  { key: 'philosophy', label: 'Felsefe Grubu' },
+              ];
+          default:
+              return [];
+      }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,6 +128,13 @@ const ExamEntry: React.FC = () => {
     setIsSubmitting(true);
 
     // Prepare data object
+    // Helper to extract values
+    const getVals = (key: keyof typeof subjects) => ({
+        d: subjects[key].d,
+        y: subjects[key].y,
+        n: calculateNet(subjects[key].d, subjects[key].y, examType)
+    });
+
     const examData = {
         studentId,
         examDate,
@@ -75,21 +142,42 @@ const ExamEntry: React.FC = () => {
         type: examType,
         totalScore: parseFloat(totalScore),
         
-        // Nets
-        turkishNet: calculateNet(subjects.turkish.d, subjects.turkish.y),
-        mathNet: calculateNet(subjects.math.d, subjects.math.y),
-        scienceNet: calculateNet(subjects.science.d, subjects.science.y),
-        socialNet: calculateNet(subjects.social.d, subjects.social.y),
-        langNet: calculateNet(subjects.lang.d, subjects.lang.y),
-        relNet: calculateNet(subjects.rel.d, subjects.rel.y),
+        // Base Nets
+        turkishNet: getVals('turkish').n,
+        mathNet: getVals('math').n,
+        scienceNet: getVals('science').n,
+        socialNet: getVals('social').n,
+        langNet: getVals('lang').n,
+        relNet: getVals('rel').n,
+        
+        // AYT Specific Nets
+        literatureNet: getVals('literature').n,
+        history1Net: getVals('history1').n,
+        geography1Net: getVals('geography1').n,
+        history2Net: getVals('history2').n,
+        geography2Net: getVals('geography2').n,
+        philosophyNet: getVals('philosophy').n,
+        physicsNet: getVals('physics').n,
+        chemistryNet: getVals('chemistry').n,
+        biologyNet: getVals('biology').n,
 
-        // Raw Data (for future editing/reference)
+        // Raw Data Storage (Mapping all just in case, empty ones will be 0)
         turkishCorrect: subjects.turkish.d, turkishIncorrect: subjects.turkish.y,
         mathCorrect: subjects.math.d, mathIncorrect: subjects.math.y,
         scienceCorrect: subjects.science.d, scienceIncorrect: subjects.science.y,
         socialCorrect: subjects.social.d, socialIncorrect: subjects.social.y,
         langCorrect: subjects.lang.d, langIncorrect: subjects.lang.y,
         relCorrect: subjects.rel.d, relIncorrect: subjects.rel.y,
+        
+        literatureCorrect: subjects.literature.d, literatureIncorrect: subjects.literature.y,
+        history1Correct: subjects.history1.d, history1Incorrect: subjects.history1.y,
+        geography1Correct: subjects.geography1.d, geography1Incorrect: subjects.geography1.y,
+        history2Correct: subjects.history2.d, history2Incorrect: subjects.history2.y,
+        geography2Correct: subjects.geography2.d, geography2Incorrect: subjects.geography2.y,
+        philosophyCorrect: subjects.philosophy.d, philosophyIncorrect: subjects.philosophy.y,
+        physicsCorrect: subjects.physics.d, physicsIncorrect: subjects.physics.y,
+        chemistryCorrect: subjects.chemistry.d, chemistryIncorrect: subjects.chemistry.y,
+        biologyCorrect: subjects.biology.d, biologyIncorrect: subjects.biology.y,
     };
 
     try {
@@ -107,15 +195,15 @@ const ExamEntry: React.FC = () => {
     }
   };
 
-  // Subject Input Component to reduce repetition
-  const SubjectInput = ({ label, subKey }: { label: string, subKey: keyof typeof subjects }) => {
+  // Subject Input Component
+  const SubjectInput: React.FC<{ label: string, subKey: keyof typeof subjects }> = ({ label, subKey }) => {
       const d = subjects[subKey].d;
       const y = subjects[subKey].y;
-      const net = calculateNet(d, y);
+      const net = calculateNet(d, y, examType);
 
       return (
           <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
-              <p className="font-bold text-lg text-slate-800 mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
+              <p className="font-bold text-lg text-slate-800 mb-4 border-b border-slate-200 pb-2 flex items-center gap-2 h-10">
                   {label}
               </p>
               <div className="grid grid-cols-3 gap-6">
@@ -149,6 +237,8 @@ const ExamEntry: React.FC = () => {
           </div>
       );
   };
+
+  const activeSubjects = getActiveSubjects();
 
   return (
     <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-sm border border-slate-100 p-8">
@@ -203,7 +293,10 @@ const ExamEntry: React.FC = () => {
                     <select 
                         className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                         value={examType}
-                        onChange={e => setExamType(e.target.value as ExamType)}
+                        onChange={e => {
+                            setExamType(e.target.value as ExamType);
+                            // Reset subjects on type change could be done here, but keeping values is also UX friendly
+                        }}
                     >
                         {Object.values(ExamType).map(t => (
                             <option key={t} value={t}>{t}</option>
@@ -215,25 +308,16 @@ const ExamEntry: React.FC = () => {
             {/* Middle Section: Subject Inputs */}
             <div className="border-t border-slate-100 pt-8">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-slate-800">Net Hesaplama</h3>
+                    <h3 className="text-xl font-bold text-slate-800">Net Hesaplama ({examType})</h3>
                     <div className="text-sm text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
-                        3 Yanlış 1 Doğruyu Götürür
+                        {examType === ExamType.LGS ? "3 Yanlış 1 Doğruyu Götürür" : "4 Yanlış 1 Doğruyu Götürür"}
                     </div>
                 </div>
                 
-                {/* Changed Grid to 2 columns for better visibility */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <SubjectInput label="Türkçe" subKey="turkish" />
-                    <SubjectInput label="Matematik" subKey="math" />
-                    <SubjectInput label="Fen Bilimleri" subKey="science" />
-                    <SubjectInput label="Sosyal / İnk." subKey="social" />
-                    
-                    {(examType === ExamType.LGS || examType === ExamType.GENERAL) && (
-                        <>
-                            <SubjectInput label="Yabancı Dil" subKey="lang" />
-                            <SubjectInput label="Din Kültürü" subKey="rel" />
-                        </>
-                    )}
+                    {activeSubjects.map((sub) => (
+                        <SubjectInput key={sub.key} label={sub.label} subKey={sub.key} />
+                    ))}
                 </div>
             </div>
 

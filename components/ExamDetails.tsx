@@ -8,11 +8,13 @@ import {
   PieChart, Pie, Cell 
 } from 'recharts';
 
-// Standard question counts for calculating "Empty" answers
+// Standard question counts for calculating "Empty" answers (Approximations/Standard)
 const QUESTION_COUNTS: Record<string, Record<string, number>> = {
   [ExamType.LGS]: { turkish: 20, math: 20, science: 20, social: 10, rel: 10, lang: 10 },
   [ExamType.TYT]: { turkish: 40, math: 40, science: 20, social: 20 },
-  [ExamType.AYT]: { math: 40, science: 40, social: 40, lang: 80, turkish: 24 } // Approximate/Combined
+  [ExamType.AYT_SAY]: { math: 40, physics: 14, chemistry: 13, biology: 13 },
+  [ExamType.AYT_EA]: { math: 40, literature: 24, history1: 10, geography1: 6 },
+  [ExamType.AYT_SOZ]: { literature: 24, history1: 10, geography1: 6, history2: 11, geography2: 11, philosophy: 12 }
 };
 
 const PIE_COLORS = {
@@ -65,12 +67,11 @@ const ExamDetails: React.FC = () => {
     if (!exam) return;
 
     let totalQuestions = 0;
-    // Try to get standard count
+    // Try to get standard count based on Exam Type
     if (QUESTION_COUNTS[exam.type] && QUESTION_COUNTS[exam.type][subject.key]) {
         totalQuestions = QUESTION_COUNTS[exam.type][subject.key];
     } else {
-        // Fallback: at least cover correct+incorrect. 
-        // We assume 20 for unknown generic exams or max(20, c+i)
+        // Fallback
         totalQuestions = Math.max(20, correct + incorrect);
     }
 
@@ -93,16 +94,28 @@ const ExamDetails: React.FC = () => {
     return <div className="p-8 text-center text-slate-500">Veri bulunamadı.</div>;
   }
 
-  const subjects = [
+  // All potential subjects. Filter later based on values.
+  const allSubjects = [
     { key: 'turkish', label: 'Türkçe' },
     { key: 'math', label: 'Matematik' },
     { key: 'science', label: 'Fen Bil.' },
     { key: 'social', label: 'Sosyal' },
     { key: 'lang', label: 'Yabancı Dil' },
     { key: 'rel', label: 'Din Kül.' },
+    
+    // AYT
+    { key: 'literature', label: 'Edebiyat' },
+    { key: 'history1', label: 'Tarih-1' },
+    { key: 'geography1', label: 'Coğrafya-1' },
+    { key: 'history2', label: 'Tarih-2' },
+    { key: 'geography2', label: 'Coğrafya-2' },
+    { key: 'philosophy', label: 'Felsefe' },
+    { key: 'physics', label: 'Fizik' },
+    { key: 'chemistry', label: 'Kimya' },
+    { key: 'biology', label: 'Biyoloji' },
   ];
 
-  const chartData = subjects.map(sub => {
+  const chartData = allSubjects.map(sub => {
     // @ts-ignore
     const d = exam[`${sub.key}Correct`] || 0;
     // @ts-ignore
@@ -231,7 +244,7 @@ const ExamDetails: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" />
+                        <XAxis dataKey="name" fontSize={11} interval={0} />
                         <YAxis />
                         <Tooltip 
                             cursor={{fill: '#f8fafc'}}

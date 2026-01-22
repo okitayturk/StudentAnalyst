@@ -5,9 +5,23 @@ import {
 } from 'recharts';
 import { db } from '../services/db';
 import { ExamResult, Student, ExamType } from '../types';
-import { Users, GraduationCap, TrendingUp, Filter, User, BookOpen } from 'lucide-react';
+import { Users, GraduationCap, TrendingUp, Filter, User, BookOpen, BarChart2 } from 'lucide-react';
 
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6', '#f97316'];
+
+const TREND_METRICS = [
+    { key: 'score', label: 'Genel Puan Ortalaması' },
+    { key: 'turkish', label: 'Türkçe Net Ortalaması' },
+    { key: 'math', label: 'Matematik Net Ortalaması' },
+    { key: 'science', label: 'Fen Bilimleri Net Ortalaması' },
+    { key: 'social', label: 'Sosyal Bilgiler Net Ortalaması' },
+    { key: 'physics', label: 'Fizik Net Ortalaması' },
+    { key: 'chemistry', label: 'Kimya Net Ortalaması' },
+    { key: 'biology', label: 'Biyoloji Net Ortalaması' },
+    { key: 'literature', label: 'Edebiyat Net Ortalaması' },
+    { key: 'history1', label: 'Tarih-1 Net Ortalaması' },
+    { key: 'geography1', label: 'Coğrafya-1 Net Ortalaması' },
+];
 
 const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -18,6 +32,9 @@ const Dashboard: React.FC = () => {
   const [selectedStudentId, setSelectedStudentId] = useState<string>('all');
   const [selectedExamType, setSelectedExamType] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('Tümü');
+  
+  // Chart Metric Filter
+  const [selectedTrendMetric, setSelectedTrendMetric] = useState<string>('score');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,7 +103,7 @@ const Dashboard: React.FC = () => {
     };
   }, [filteredExams, students, selectedStudentId]);
 
-  // 3. Monthly Trend Data (Line Chart) - Based on filtered exams
+  // 3. Monthly Trend Data (Line Chart) - Based on filtered exams AND selected Metric
   const monthlyTrendData = useMemo(() => {
     const grouped: Record<string, { total: number; count: number }> = {};
     
@@ -94,16 +111,28 @@ const Dashboard: React.FC = () => {
         if (!exam.examDate) return;
         const month = exam.examDate.substring(0, 7); // YYYY-MM
         if (!grouped[month]) grouped[month] = { total: 0, count: 0 };
-        grouped[month].total += exam.totalScore;
+        
+        // Determine value based on selected metric
+        let val = 0;
+        if (selectedTrendMetric === 'score') {
+            val = exam.totalScore;
+        } else {
+            // Dynamic key access for nets (e.g., turkishNet, mathNet)
+            const key = `${selectedTrendMetric}Net` as keyof ExamResult;
+            // @ts-ignore
+            val = (exam[key] as number) || 0;
+        }
+
+        grouped[month].total += val;
         grouped[month].count += 1;
     });
 
     return Object.keys(grouped).sort().map(month => ({
         name: month,
         displayName: getFormattedMonth(month),
-        score: Math.round(grouped[month].total / grouped[month].count)
+        value: Math.round((grouped[month].total / grouped[month].count) * 100) / 100 // Round to 2 decimals
     }));
-  }, [filteredExams]);
+  }, [filteredExams, selectedTrendMetric]);
 
   // 4. Subject Data (Bar Chart) - Based on filtered exams AND selected month
   const subjectChartData = useMemo(() => {
@@ -115,26 +144,64 @@ const Dashboard: React.FC = () => {
 
     if (currentSet.length === 0) return [];
 
-    const totals = currentSet.reduce((acc, curr) => ({
-        turkish: acc.turkish + (curr.turkishNet || 0),
-        math: acc.math + (curr.mathNet || 0),
-        science: acc.science + (curr.scienceNet || 0),
-        social: acc.social + (curr.socialNet || 0),
-        lang: acc.lang + (curr.langNet || 0),
-        rel: acc.rel + (curr.relNet || 0)
-    }), { turkish: 0, math: 0, science: 0, social: 0, lang: 0, rel: 0 });
+    // Initialize accumulator for all possible subjects
+    const totals = {
+        turkish: 0, math: 0, science: 0, social: 0, lang: 0, rel: 0,
+        literature: 0, history1: 0, geography1: 0,
+        history2: 0, geography2: 0, philosophy: 0,
+        physics: 0, chemistry: 0, biology: 0
+    };
 
     const count = currentSet.length;
-    
-    const data = [
-        { name: 'Türkçe', value: Math.round(totals.turkish / count * 10) / 10 },
-        { name: 'Matematik', value: Math.round(totals.math / count * 10) / 10 },
-        { name: 'Fen', value: Math.round(totals.science / count * 10) / 10 },
-        { name: 'Sosyal', value: Math.round(totals.social / count * 10) / 10 },
-    ];
 
-    if (totals.lang > 0) data.push({ name: 'Y. Dil', value: Math.round(totals.lang / count * 10) / 10 });
-    if (totals.rel > 0) data.push({ name: 'Din K.', value: Math.round(totals.rel / count * 10) / 10 });
+    currentSet.forEach(curr => {
+        totals.turkish += curr.turkishNet || 0;
+        totals.math += curr.mathNet || 0;
+        totals.science += curr.scienceNet || 0;
+        totals.social += curr.socialNet || 0;
+        totals.lang += curr.langNet || 0;
+        totals.rel += curr.relNet || 0;
+        totals.literature += curr.literatureNet || 0;
+        totals.history1 += curr.history1Net || 0;
+        totals.geography1 += curr.geography1Net || 0;
+        totals.history2 += curr.history2Net || 0;
+        totals.geography2 += curr.geography2Net || 0;
+        totals.philosophy += curr.philosophyNet || 0;
+        totals.physics += curr.physicsNet || 0;
+        totals.chemistry += curr.chemistryNet || 0;
+        totals.biology += curr.biologyNet || 0;
+    });
+    
+    const data = [];
+
+    // Helper to push only if relevant or has value
+    const pushIfRelevant = (key: keyof typeof totals, name: string) => {
+        const val = totals[key];
+        // Display if value > 0 OR if it's a standard field and we are in 'all' mode
+        // For dashboard clarity, we usually only show what has data
+        if (val > 0) {
+            data.push({ name, value: Math.round(val / count * 10) / 10 });
+        }
+    };
+
+    // Standard
+    pushIfRelevant('turkish', 'Türkçe');
+    pushIfRelevant('math', 'Matematik');
+    pushIfRelevant('science', 'Fen Bil.');
+    pushIfRelevant('social', 'Sosyal');
+    pushIfRelevant('lang', 'Yabancı Dil');
+    pushIfRelevant('rel', 'Din Kültürü');
+
+    // AYT Specifics
+    pushIfRelevant('literature', 'Edebiyat');
+    pushIfRelevant('history1', 'Tarih-1');
+    pushIfRelevant('geography1', 'Coğrafya-1');
+    pushIfRelevant('history2', 'Tarih-2');
+    pushIfRelevant('geography2', 'Coğrafya-2');
+    pushIfRelevant('philosophy', 'Felsefe');
+    pushIfRelevant('physics', 'Fizik');
+    pushIfRelevant('chemistry', 'Kimya');
+    pushIfRelevant('biology', 'Biyoloji');
 
     return data;
   }, [filteredExams, selectedMonth]);
@@ -237,7 +304,24 @@ const Dashboard: React.FC = () => {
         
         {/* Line Chart - Monthly Progress Trend */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Aylık Başarı Grafiği (Ortalama Puan)</h3>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                <h3 className="text-lg font-semibold text-slate-800">Aylık Değişim Grafiği</h3>
+                
+                 {/* Chart Metric Filter */}
+                 <div className="relative z-10">
+                    <BarChart2 className="absolute left-2 top-2 text-slate-400" size={14} />
+                    <select 
+                        value={selectedTrendMetric}
+                        onChange={(e) => setSelectedTrendMetric(e.target.value)}
+                        className="pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 min-w-[180px]"
+                    >
+                        {TREND_METRICS.map(m => (
+                            <option key={m.key} value={m.key}>{m.label}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
             <div className="w-full h-80">
                 {monthlyTrendData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -265,10 +349,11 @@ const Dashboard: React.FC = () => {
                                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                                     backgroundColor: 'rgba(255, 255, 255, 0.95)'
                                 }} 
+                                formatter={(value: number) => [value, selectedTrendMetric === 'score' ? 'Puan' : 'Net']}
                             />
                             <Line 
                                 type="monotone" 
-                                dataKey="score" 
+                                dataKey="value" 
                                 stroke="#4f46e5" 
                                 strokeWidth={3}
                                 dot={{r: 4, fill: '#4f46e5', strokeWidth: 2, stroke: '#fff'}}
@@ -315,7 +400,8 @@ const Dashboard: React.FC = () => {
                                 fontSize={12} 
                                 tickLine={false} 
                                 axisLine={false} 
-                                tick={{fill: '#64748b'}}
+                                interval={0} 
+                                tick={{fill: '#64748b', fontSize: 10}}
                             />
                             <YAxis 
                                 fontSize={12} 

@@ -9,7 +9,10 @@ export interface Student {
 export enum ExamType {
   LGS = 'LGS',
   TYT = 'TYT',
-  AYT = 'AYT',
+  AYT_SAY = 'AYT SAY',
+  AYT_EA = 'AYT EA',
+  AYT_SOZ = 'AYT SÖZ',
+  AYT = 'AYT (Genel)', // Backward compatibility
   GENERAL = 'GENEL'
 }
 
@@ -20,7 +23,7 @@ export interface ExamResult {
   examName: string;
   type: ExamType;
   
-  // Detailed Inputs
+  // --- Common & TYT/LGS Inputs ---
   turkishCorrect?: number; turkishIncorrect?: number;
   mathCorrect?: number; mathIncorrect?: number;
   scienceCorrect?: number; scienceIncorrect?: number;
@@ -28,16 +31,39 @@ export interface ExamResult {
   langCorrect?: number; langIncorrect?: number;
   relCorrect?: number; relIncorrect?: number;
 
-  // Calculated Nets (Stored for easier analysis)
+  // --- AYT Specific Inputs ---
+  literatureCorrect?: number; literatureIncorrect?: number; // Edebiyat
+  history1Correct?: number; history1Incorrect?: number; // Tarih-1
+  geography1Correct?: number; geography1Incorrect?: number; // Coğrafya-1
+  history2Correct?: number; history2Incorrect?: number; // Tarih-2
+  geography2Correct?: number; geography2Incorrect?: number; // Coğrafya-2
+  philosophyCorrect?: number; philosophyIncorrect?: number; // Felsefe Grubu
+  physicsCorrect?: number; physicsIncorrect?: number; // Fizik
+  chemistryCorrect?: number; chemistryIncorrect?: number; // Kimya
+  biologyCorrect?: number; biologyIncorrect?: number; // Biyoloji
+
+  // --- Calculated Nets ---
+  // Core
   turkishNet: number;
   mathNet: number;
   scienceNet: number;
   socialNet: number;
   
-  // Specific for LGS/AYT
-  langNet?: number; // Yabancı Dil
-  relNet?: number; // Din Kültürü
+  // Extras
+  langNet?: number;
+  relNet?: number;
   
+  // AYT Specific Nets
+  literatureNet?: number;
+  history1Net?: number;
+  geography1Net?: number;
+  history2Net?: number;
+  geography2Net?: number;
+  philosophyNet?: number;
+  physicsNet?: number;
+  chemistryNet?: number;
+  biologyNet?: number;
+
   totalScore: number;
 }
 
