@@ -8,6 +8,7 @@ import Calculators from './components/Calculators';
 import ExamDetails from './components/ExamDetails';
 import UniversityScores from './components/UniversityScores';
 import HighSchoolScores from './components/HighSchoolScores';
+import QuestionTracking from './components/QuestionTracking';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/students" element={<Students />} />
           <Route path="/exam-entry" element={<ExamEntry />} />
+          <Route path="/question-tracking" element={<QuestionTracking />} />
           <Route path="/calculators" element={<Calculators />} />
           <Route path="/exam/:id" element={<ExamDetails />} />
           <Route path="/university-scores" element={<UniversityScores />} />

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, PlusCircle, BarChart2, BookOpen, School } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, PlusCircle, BarChart2, BookOpen, School, PenTool } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,6 +17,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
     { path: '/students', icon: <Users size={20} />, label: 'Öğrenciler' },
     { path: '/exam-entry', icon: <PlusCircle size={20} />, label: 'Deneme Gir' },
+    { path: '/question-tracking', icon: <PenTool size={20} />, label: 'Soru Takibi' },
     { path: '/calculators', icon: <Calculator size={20} />, label: 'Puan Hesaplama' },
     { path: '/university-scores', icon: <BookOpen size={20} />, label: 'Üniversite Puanları' },
     { path: '/high-school-scores', icon: <School size={20} />, label: 'Lise Puanları' },
@@ -45,7 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           ))}
         </nav>
         <div className="p-4 border-t border-slate-100">
-            <p className="text-xs text-slate-400 text-center">v1.0.0 &copy; 2024</p>
+            <p className="text-xs text-slate-400 text-center">v1.1.0 &copy; 2024</p>
         </div>
       </aside>
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
 import { Student, ExamResult } from '../types';
 import { Trash2, UserPlus, Search, Users, Eye } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Link } from 'react-router-dom';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -13,7 +13,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                 <p className="font-bold text-slate-800 mb-1">{data.examName}</p>
                 <p className="text-xs text-slate-500 mb-2">{data.fullDate} • {data.type}</p>
                 <div className="flex items-center gap-2">
-                     <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                     <span 
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: data.type === 'TYT' ? '#0ea5e9' : data.type.includes('AYT') ? '#f43f5e' : '#4f46e5' }}
+                     ></span>
                      <span className="font-semibold text-slate-700">Puan: {Number(data.score).toFixed(3)}</span>
                 </div>
             </div>
@@ -173,7 +176,25 @@ const Students: React.FC = () => {
                 </div>
 
                 <div>
-                    <h3 className="text-lg font-semibold mb-4 text-slate-800">Kişisel Gelişim Grafiği</h3>
+                    <div className="flex justify-between items-end mb-4">
+                        <h3 className="text-lg font-semibold text-slate-800">Kişisel Gelişim Grafiği</h3>
+                        {/* Legend */}
+                        <div className="flex items-center gap-3 text-xs">
+                             <div className="flex items-center gap-1">
+                                <span className="w-3 h-3 rounded-full bg-[#0ea5e9]"></span>
+                                <span className="text-slate-600 font-medium">TYT</span>
+                             </div>
+                             <div className="flex items-center gap-1">
+                                <span className="w-3 h-3 rounded-full bg-[#f43f5e]"></span>
+                                <span className="text-slate-600 font-medium">AYT</span>
+                             </div>
+                             <div className="flex items-center gap-1">
+                                <span className="w-3 h-3 rounded-full bg-[#4f46e5]"></span>
+                                <span className="text-slate-600 font-medium">Diğer</span>
+                             </div>
+                        </div>
+                    </div>
+
                     {/* Explicit Height Container */}
                     <div className="w-full h-80 bg-slate-50 rounded-lg p-4 border border-slate-100 mb-6">
                         {studentStats.length > 0 ? (
@@ -196,13 +217,15 @@ const Students: React.FC = () => {
                                         domain={[0, 'auto']}
                                     />
                                     <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9' }} />
-                                    <Bar 
-                                        dataKey="score" 
-                                        fill="#4f46e5" 
-                                        radius={[4, 4, 0, 0]} 
-                                        barSize={40} 
-                                        activeBar={{ fill: '#4338ca' }}
-                                    />
+                                    <Bar dataKey="score" radius={[4, 4, 0, 0]} barSize={40}>
+                                        {studentStats.map((entry, index) => {
+                                            let color = '#4f46e5'; // Default (LGS/General)
+                                            if (entry.type === 'TYT') color = '#0ea5e9'; // Blue for TYT
+                                            else if (entry.type && entry.type.includes('AYT')) color = '#f43f5e'; // Red/Rose for AYT
+                                            
+                                            return <Cell key={`cell-${index}`} fill={color} />;
+                                        })}
+                                    </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
@@ -229,7 +252,17 @@ const Students: React.FC = () => {
                                         <tr key={exam.id} className="border-b border-slate-100 text-slate-700 hover:bg-slate-50 transition-colors">
                                             <td className="p-3">{exam.examDate}</td>
                                             <td className="p-3 font-medium">{exam.examName}</td>
-                                            <td className="p-3"><span className="px-2 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded text-xs">{exam.type}</span></td>
+                                            <td className="p-3">
+                                                <span 
+                                                    className={`px-2 py-1 rounded text-xs border ${
+                                                        exam.type === 'TYT' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                                                        exam.type.includes('AYT') ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                                        'bg-slate-100 text-slate-600 border-slate-200'
+                                                    }`}
+                                                >
+                                                    {exam.type}
+                                                </span>
+                                            </td>
                                             <td className="p-3 font-bold text-indigo-600">{exam.totalScore.toFixed(2)}</td>
                                             <td className="p-3 text-center">
                                                 <Link 

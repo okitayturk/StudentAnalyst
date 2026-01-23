@@ -1,221 +1,159 @@
 export interface HighSchool {
   id: string;
   city: string;
+  district: string;
   schoolName: string;
   type: 'Fen Lisesi' | 'Anadolu Lisesi' | 'Sosyal Bilimler' | 'Anadolu İmam Hatip' | 'Mesleki ve Teknik';
   language: string; // İngilizce, Almanca, Fransızca etc.
   score: number;
   percentile: number;
-  quota: number;
+  quota: number; // Data setinde olmadığı için varsayılan değer atanacak
 }
 
-const cities = [
-  "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Amasya", "Ankara", "Antalya", "Artvin", "Aydın", "Balıkesir", 
-  "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", 
-  "Diyarbakır", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", 
-  "Hakkari", "Hatay", "Isparta", "Mersin", "İstanbul", "İzmir", "Kars", "Kastamonu", "Kayseri", "Kırklareli", 
-  "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Kahramanmaraş", "Mardin", "Muğla", "Muş", 
-  "Nevşehir", "Niğde", "Ordu", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat", 
-  "Trabzon", "Tunceli", "Şanlıurfa", "Uşak", "Van", "Yozgat", "Zonguldak", "Aksaray", "Bayburt", "Karaman", 
-  "Kırıkkale", "Batman", "Şırnak", "Bartın", "Ardahan", "Iğdır", "Yalova", "Karabük", "Kilis", "Osmaniye", "Düzce"
+// PDF verisinden çıkarılan Ankara okulları listesi
+const realData = [
+  { name: "Ankara Fen Lisesi", district: "Çankaya", type: "Fen Lisesi", lang: "İngilizce", score: 494.5096, p: 0.09 },
+  { name: "Prof. Dr. Aziz Sancar Fen Lisesi", district: "Çankaya", type: "Fen Lisesi", lang: "İngilizce", score: 493.8037, p: 0.21 },
+  { name: "Ankara Pursaklar Fen Lisesi", district: "Pursaklar", type: "Fen Lisesi", lang: "İngilizce", score: 489.0189, p: 0.31 },
+  { name: "Erman Ilıcak Fen Lisesi", district: "Ankara", type: "Fen Lisesi", lang: "İngilizce", score: 481.8925, p: 0.77 },
+  { name: "Atatürk Anadolu Lisesi", district: "Yenimahalle", type: "Anadolu Lisesi", lang: "İngilizce", score: 481.7319, p: 0.79 },
+  { name: "Özdemir Bayraktar Havacılık ve Uzay Teknolojileri MTAL", district: "Elmadağ", type: "Mesleki ve Teknik", lang: "İngilizce", score: 480.2425, p: 0.87 },
+  { name: "Cumhuriyet Fen Lisesi", district: "Çankaya", type: "Fen Lisesi", lang: "İngilizce", score: 477.3322, p: 1.04 },
+  { name: "Keçiören Vatansever Şehit Tümgeneral Aydoğan Aydın Fen Lisesi", district: "Keçiören", type: "Fen Lisesi", lang: "İngilizce", score: 476.4021, p: 1.13 },
+  { name: "Yenimahalle Fen Lisesi", district: "Yenimahalle", type: "Fen Lisesi", lang: "İngilizce", score: 474.6942, p: 1.26 },
+  { name: "Özkent Akbilek Fen Lisesi", district: "Etimesgut", type: "Fen Lisesi", lang: "İngilizce", score: 470.7507, p: 1.58 },
+  { name: "Aselsan Mesleki ve Teknik Anadolu Lisesi (Elektrik-Elektronik)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 470.5631, p: 1.60 },
+  { name: "Aselsan Mesleki ve Teknik Anadolu Lisesi (Makine)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 465.9427, p: 2.01 },
+  { name: "Ankara Atatürk Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "İngilizce", score: 462.6804, p: 2.35 },
+  { name: "Gazi Anadolu Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "İngilizce", score: 462.4520, p: 2.37 },
+  { name: "Mehmet Emin Resulzade Anadolu Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "İngilizce", score: 461.4889, p: 2.45 },
+  { name: "Dr.Binnaz Ege-Dr.Rıdvan Ege Anadolu Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "İngilizce", score: 457.8127, p: 2.83 },
+  { name: "Şehit Oğuzhan Yaşar Anadolu Lisesi", district: "Etimesgut", type: "Anadolu Lisesi", lang: "İngilizce", score: 456.2556, p: 2.99 },
+  { name: "Hacı Ömer Tarman Anadolu Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "İngilizce", score: 454.3372, p: 3.19 },
+  { name: "Nermin Mehmet Çekiç Anadolu Lisesi", district: "Yenimahalle", type: "Anadolu Lisesi", lang: "İngilizce", score: 451.9973, p: 3.46 },
+  { name: "Hacı Ömer Tarman Anadolu Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "Almanca", score: 450.7799, p: 3.60 },
+  { name: "Vecihi Hürkuş Anadolu Lisesi", district: "Keçiören", type: "Anadolu Lisesi", lang: "İngilizce", score: 449.2557, p: 3.78 },
+  { name: "Tevfik İleri Anadolu İmam Hatip Lisesi (Fen ve Sosyal Bilimler)", district: "Yenimahalle", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 448.0142, p: 3.92 },
+  { name: "Mamak Fen Lisesi", district: "Mamak", type: "Fen Lisesi", lang: "İngilizce", score: 445.0946, p: 4.25 },
+  { name: "Ayrancı Anadolu Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "İngilizce", score: 443.2851, p: 4.47 },
+  { name: "Cezeri Yeşil Teknoloji MTAL (Elektrik-Elektronik)", district: "Etimesgut", type: "Mesleki ve Teknik", lang: "İngilizce", score: 443.2630, p: 4.47 },
+  { name: "Tevfik İleri Anadolu İmam Hatip Lisesi", district: "Yenimahalle", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 441.2978, p: 4.72 },
+  { name: "Betül Can Anadolu Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "İngilizce", score: 436.5620, p: 5.32 },
+  { name: "Mustafa Azmi Doğan Anadolu Lisesi", district: "Yenimahalle", type: "Anadolu Lisesi", lang: "İngilizce", score: 436.0254, p: 5.39 },
+  { name: "Altındağ Yıldırım Beyazıt Fen Lisesi", district: "Altındağ", type: "Fen Lisesi", lang: "İngilizce", score: 435.6053, p: 5.44 },
+  { name: "Süleyman Demirel Anadolu Lisesi", district: "Sincan", type: "Anadolu Lisesi", lang: "İngilizce", score: 435.3357, p: 5.48 },
+  { name: "Ayhan Sümer Anadolu Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "İngilizce", score: 433.5008, p: 5.73 },
+  { name: "Ümitköy Anadolu Lisesi", district: "Çankaya", type: "Anadolu Lisesi", lang: "İngilizce", score: 432.2141, p: 5.90 },
+  { name: "Ayrancı Anadolu Lisesi (Çince)", district: "Çankaya", type: "Anadolu Lisesi", lang: "Çince", score: 432.0154, p: 5.93 },
+  { name: "Aydınlıkevler Anadolu Lisesi", district: "Keçiören", type: "Anadolu Lisesi", lang: "İngilizce", score: 430.9691, p: 6.07 },
+  { name: "Mustafa Hakan Güvençer Fen Lisesi", district: "Kahramankazan", type: "Fen Lisesi", lang: "İngilizce", score: 430.6638, p: 6.11 },
+  { name: "Cezeri Yeşil Teknoloji MTAL (Yenilenebilir Enerji)", district: "Etimesgut", type: "Mesleki ve Teknik", lang: "İngilizce", score: 429.9631, p: 6.21 },
+  { name: "Ankara Lisesi", district: "Altındağ", type: "Anadolu Lisesi", lang: "İngilizce", score: 429.3310, p: 6.30 },
+  { name: "Şehit Ömer Halisdemir Anadolu Lisesi", district: "Etimesgut", type: "Anadolu Lisesi", lang: "İngilizce", score: 429.0020, p: 6.35 },
+  { name: "Fatih Anadolu Lisesi", district: "Sincan", type: "Anadolu Lisesi", lang: "İngilizce", score: 423.5756, p: 7.11 },
+  { name: "Şehit Ömer Halisdemir AİHL (Fen ve Sosyal)", district: "Yenimahalle", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 423.1776, p: 7.16 },
+  { name: "Yavuz Sultan Selim Anadolu Lisesi", district: "Mamak", type: "Anadolu Lisesi", lang: "İngilizce", score: 420.0453, p: 7.61 },
+  { name: "Gölbaşı Anadolu Lisesi", district: "Gölbaşı", type: "Anadolu Lisesi", lang: "İngilizce", score: 418.1924, p: 7.88 },
+  { name: "Polatlı Tobb Fen Lisesi", district: "Polatlı", type: "Fen Lisesi", lang: "İngilizce", score: 417.2241, p: 8.02 },
+  { name: "Meliha Hasanali Bostan Çubuk Fen Lisesi", district: "Çubuk", type: "Fen Lisesi", lang: "İngilizce", score: 416.9827, p: 8.05 },
+  { name: "Pursaklar Ayyıldız Anadolu Lisesi", district: "Pursaklar", type: "Anadolu Lisesi", lang: "İngilizce", score: 416.2472, p: 8.17 },
+  { name: "Gazi Lisesi", district: "Altındağ", type: "Anadolu Lisesi", lang: "İngilizce", score: 416.1667, p: 8.18 },
+  { name: "Tusaş Şehit Hakan Gülşen MTAL (Uçak Bakım)", district: "Kızılcahamam", type: "Mesleki ve Teknik", lang: "İngilizce", score: 415.0207, p: 8.35 },
+  { name: "Şehit Cengiz Polat AİHL (Fen ve Teknoloji)", district: "Yenimahalle", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 414.5995, p: 8.42 },
+  { name: "Aktepe Şehit Köksal Kaşaltı Anadolu Lisesi", district: "Keçiören", type: "Anadolu Lisesi", lang: "İngilizce", score: 411.3061, p: 8.93 },
+  { name: "Ankara Türk Telekom Sosyal Bilimler Lisesi", district: "Çankaya", type: "Sosyal Bilimler", lang: "İngilizce", score: 409.0835, p: 9.27 },
+  { name: "Gazi MTAL (Uçak Bakım)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "Almanca", score: 406.5364, p: 9.67 },
+  { name: "Hatice-Cemil Ercan Fen Lisesi", district: "Beypazarı", type: "Fen Lisesi", lang: "İngilizce", score: 405.8370, p: 9.79 },
+  { name: "Hasan Ali Yücel Sosyal Bilimler Lisesi", district: "Çankaya", type: "Sosyal Bilimler", lang: "İngilizce", score: 403.1942, p: 10.22 },
+  { name: "Teknopark Ankara İvedik OSB MTAL (Elektrik)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 402.7053, p: 10.30 },
+  { name: "Piri Reis Anadolu Lisesi", district: "Altındağ", type: "Anadolu Lisesi", lang: "İngilizce", score: 402.2469, p: 10.38 },
+  { name: "Hasanoğlan Atatürk Fen Lisesi", district: "Elmadağ", type: "Fen Lisesi", lang: "İngilizce", score: 400.8445, p: 10.61 },
+  { name: "Başkent Anadolu Lisesi", district: "Mamak", type: "Anadolu Lisesi", lang: "İngilizce", score: 395.9604, p: 11.41 },
+  { name: "Teknopark Ankara İvedik OSB MTAL (Bilişim)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 395.3831, p: 11.51 },
+  { name: "Gazi MTAL (Radyo-TV)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 394.9412, p: 11.58 },
+  { name: "Gölbaşı Uluslararası Millî İrade Kız AİHL (Fen/Sosyal)", district: "Gölbaşı", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 394.9104, p: 11.59 },
+  { name: "Akyurt Muhammed Hamdi Yazır AİHL (Hafızlık)", district: "Akyurt", type: "Anadolu İmam Hatip", lang: "Arapça", score: 391.8226, p: 12.11 },
+  { name: "Mogan MTAL (Konaklama ve Seyahat)", district: "Gölbaşı", type: "Mesleki ve Teknik", lang: "İngilizce", score: 388.4650, p: 12.67 },
+  { name: "Sincan Ahmet Andiçen MTAL (Muhasebe)", district: "Sincan", type: "Mesleki ve Teknik", lang: "İngilizce", score: 387.8626, p: 12.78 },
+  { name: "Battalgazi MTAL (Elektrik)", district: "Mamak", type: "Mesleki ve Teknik", lang: "İngilizce", score: 384.0894, p: 13.44 },
+  { name: "Yıldırım Beyazıt Anadolu Lisesi", district: "Akyurt", type: "Anadolu Lisesi", lang: "İngilizce", score: 381.8985, p: 13.83 },
+  { name: "Keçiören İbn-İ Sina MTAL (Sağlık Hiz.)", district: "Keçiören", type: "Mesleki ve Teknik", lang: "İngilizce", score: 380.0308, p: 14.15 },
+  { name: "Mustafa Asım Köksal AİHL (Fen/Sosyal)", district: "Keçiören", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 379.9157, p: 14.18 },
+  { name: "Nallıhan Bilal Güngör Fen Lisesi", district: "Nallıhan", type: "Fen Lisesi", lang: "İngilizce", score: 376.6767, p: 14.76 },
+  { name: "Güdül Hasan Hüseyin Akdede Fen Lisesi", district: "Güdül", type: "Fen Lisesi", lang: "İngilizce", score: 372.0334, p: 15.62 },
+  { name: "Batıkent Şehit Demet Sezen Kız AİHL (Fen/Sosyal)", district: "Yenimahalle", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 369.2387, p: 16.14 },
+  { name: "Atatürk MTAL (Harita-Tapu)", district: "Keçiören", type: "Mesleki ve Teknik", lang: "İngilizce", score: 367.2198, p: 16.51 },
+  { name: "Haymana Anadolu İmam Hatip Lisesi", district: "Haymana", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 365.5082, p: 16.84 },
+  { name: "Yenimahalle Şehit Mehmet Şengül MTAL (Elektrik)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 361.6399, p: 17.59 },
+  { name: "Sabahattin Zaim Sosyal Bilimler Lisesi", district: "Altındağ", type: "Sosyal Bilimler", lang: "İngilizce", score: 361.1372, p: 17.68 },
+  { name: "Altındağ Anadolu İmam Hatip Lisesi (Fen/Sosyal)", district: "Altındağ", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 361.0421, p: 17.70 },
+  { name: "Kalecik Mehmet Doğan Fen Lisesi", district: "Kalecik", type: "Fen Lisesi", lang: "İngilizce", score: 355.7485, p: 18.75 },
+  { name: "Şehit Ahmet Özsoy Kız AİHL (Fen/Sosyal)", district: "Keçiören", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 355.5776, p: 18.78 },
+  { name: "Altındağ Atatürk MTAL (Yiyecek İçecek)", district: "Altındağ", type: "Mesleki ve Teknik", lang: "İngilizce", score: 354.4228, p: 19.01 },
+  { name: "Akyurt Muhammed Hamdi Yazır AİHL (Fen/Sosyal)", district: "Akyurt", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 353.7251, p: 19.15 },
+  { name: "Prof.Dr.Muhammed Hamidullah AİHL (Fen/Sosyal)", district: "Yenimahalle", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 352.5042, p: 19.40 },
+  { name: "Sincan Fatih MTAL (Elektrik)", district: "Sincan", type: "Mesleki ve Teknik", lang: "İngilizce", score: 352.0949, p: 19.49 },
+  { name: "Bağlum Şehit Oğuz Kaan Usta MTAL (Biyomedikal)", district: "Keçiören", type: "Mesleki ve Teknik", lang: "İngilizce", score: 351.5336, p: 19.60 },
+  { name: "Mamak Prof. Dr. Rağıp Üner MTAL (Sağlık)", district: "Mamak", type: "Mesleki ve Teknik", lang: "İngilizce", score: 351.2358, p: 19.66 },
+  { name: "Gölbaşı Mogan MTAL (Yiyecek İçecek)", district: "Gölbaşı", type: "Mesleki ve Teknik", lang: "İngilizce", score: 350.0757, p: 19.89 },
+  { name: "Sincan Şehit Özgür Can İnce MTAL (Makine)", district: "Sincan", type: "Mesleki ve Teknik", lang: "İngilizce", score: 345.6482, p: 20.81 },
+  { name: "Ostim Şehit Alper Zor MTAL (Makine)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 345.0935, p: 20.92 },
+  { name: "Keçiören Kanuni MTAL (Elektrik)", district: "Keçiören", type: "Mesleki ve Teknik", lang: "İngilizce", score: 344.2651, p: 21.10 },
+  { name: "Aydınlıkevler MTAL (Muhasebe)", district: "Keçiören", type: "Mesleki ve Teknik", lang: "İngilizce", score: 342.4926, p: 21.47 },
+  { name: "Çankaya Ümitköy Kız AİHL (Fen/Sosyal)", district: "Çankaya", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 342.1832, p: 21.54 },
+  { name: "Keçiören Batıkent Şehit Demet Sezen Kız AİHL", district: "Yenimahalle", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 337.4242, p: 22.56 },
+  { name: "Keçiören Atatürk AİHL (Fen/Sosyal)", district: "Keçiören", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 334.0288, p: 23.31 },
+  { name: "Teknopark Ankara İvedik OSB MTAL (Makine)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 326.8034, p: 24.93 },
+  { name: "Şereflikoçhisar Yavuz Sultan Selim Fen Lisesi", district: "Şereflikoçhisar", type: "Fen Lisesi", lang: "İngilizce", score: 326.2993, p: 25.05 },
+  { name: "Polatlı Anadolu İmam Hatip Lisesi (Fen/Sosyal)", district: "Polatlı", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 324.6031, p: 25.44 },
+  { name: "Yenimahalle Şehit Mehmet Şengül MTAL (Bilişim)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 314.4342, p: 27.87 },
+  { name: "Demetevler Kız AİHL (Fen/Sosyal)", district: "Yenimahalle", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 313.6985, p: 28.04 },
+  { name: "Kahramankazan Fuat Erkmen AİHL (Fen/Sosyal)", district: "Kahramankazan", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 312.7970, p: 28.26 },
+  { name: "Mamak Osman Yüksel Serdengeçti Kız AİHL", district: "Mamak", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 309.3604, p: 29.12 },
+  { name: "Elmadağ Anadolu İmam Hatip Lisesi (Fen/Sosyal)", district: "Elmadağ", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 304.1291, p: 29.58 },
+  { name: "Nallıhan Fettah Güngör MTAL (Tarım)", district: "Nallıhan", type: "Mesleki ve Teknik", lang: "İngilizce", score: 304.1291, p: 30.50 },
+  { name: "Çankaya Balgat MTAL (Elektrik)", district: "Çankaya", type: "Mesleki ve Teknik", lang: "İngilizce", score: 303.4426, p: 30.68 },
+  { name: "Kızılcahamam Şehit Zekeriya Yurdakul AİHL", district: "Kızılcahamam", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 303.1139, p: 30.76 },
+  { name: "Altındağ Mesleki ve Teknik Anadolu Lisesi", district: "Altındağ", type: "Mesleki ve Teknik", lang: "İngilizce", score: 301.1375, p: 31.29 },
+  { name: "Çubuk Fatih Sultan Mehmet MTAL (Elektrik)", district: "Çubuk", type: "Mesleki ve Teknik", lang: "İngilizce", score: 300.4692, p: 31.46 },
+  { name: "Sincan Şehit Erdal Koçak MTAL (Adalet)", district: "Sincan", type: "Mesleki ve Teknik", lang: "İngilizce", score: 298.2746, p: 32.04 },
+  { name: "Beypazarı Şehit Sefa Tiftik AİHL", district: "Beypazarı", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 297.2897, p: 32.30 },
+  { name: "Ankara MTAL (Harita-Tapu)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 296.9345, p: 32.39 },
+  { name: "Kahramankazan Kız AİHL (Fen/Sosyal)", district: "Kahramankazan", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 296.6309, p: 32.47 },
+  { name: "Batıkent Şevket Evliyagil MTAL (Gazetecilik)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 287.4921, p: 35.23 },
+  { name: "Ayaş Abdülhamid Han AİHL (Fen/Sosyal)", district: "Ayaş", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 286.4327, p: 35.61 },
+  { name: "Bağlum Şehit Oğuz Kaan Usta MTAL (Elektrik)", district: "Keçiören", type: "Mesleki ve Teknik", lang: "İngilizce", score: 286.4250, p: 35.61 },
+  { name: "Mamak Abidinpaşa MTAL (Makine)", district: "Mamak", type: "Mesleki ve Teknik", lang: "İngilizce", score: 285.9920, p: 35.76 },
+  { name: "Gölbaşı Şehit Sebahattin Koçak Kız AİHL", district: "Gölbaşı", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 285.3643, p: 35.99 },
+  { name: "Çankaya Tapu Kadastro MTAL (Harita)", district: "Çankaya", type: "Mesleki ve Teknik", lang: "İngilizce", score: 280.4124, p: 37.77 },
+  { name: "Beypazarı Fatih MTAL (Elektrik)", district: "Beypazarı", type: "Mesleki ve Teknik", lang: "İngilizce", score: 280.4006, p: 37.77 },
+  { name: "Çankaya Nurten Uşan AİHL (Fen/Sosyal)", district: "Çankaya", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 279.9950, p: 37.92 },
+  { name: "Etimesgut Eryaman Şehit Okan Koç AİHL", district: "Etimesgut", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 272.1258, p: 40.74 },
+  { name: "Pursaklar Güzide Ülker MTAL (Ulaştırma)", district: "Pursaklar", type: "Mesleki ve Teknik", lang: "İngilizce", score: 268.6951, p: 41.97 },
+  { name: "Polatlı MTAL (Makine)", district: "Polatlı", type: "Mesleki ve Teknik", lang: "İngilizce", score: 268.1386, p: 42.17 },
+  { name: "Mimar Sinan MTAL (Harita)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 266.8283, p: 42.64 },
+  { name: "Şereflikoçhisar AİHL (Fen/Sosyal)", district: "Şereflikoçhisar", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 266.1584, p: 42.88 },
+  { name: "Pursaklar Kız AİHL (Çocuk Gelişimi)", district: "Pursaklar", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 258.8394, p: 45.50 },
+  { name: "Yenimahalle Zeynep-Salih Alp MTAL (Grafik)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 258.0980, p: 45.77 },
+  { name: "Başkent OSB MTAL (Makine)", district: "Sincan", type: "Mesleki ve Teknik", lang: "İngilizce", score: 256.1289, p: 46.48 },
+  { name: "Mehmet Rüştü Uzel MTAL (Kimya)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 252.8607, p: 47.65 },
+  { name: "Sincan AİHL (Fen/Sosyal)", district: "Sincan", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 242.5006, p: 51.36 },
+  { name: "Mamak Türközü Oğuzhan MTAL (Elektrik)", district: "Mamak", type: "Mesleki ve Teknik", lang: "İngilizce", score: 241.8305, p: 51.60 },
+  { name: "Keçiören Şehit Mehmet Karakaşoğlu MTAL (Makine)", district: "Keçiören", type: "Mesleki ve Teknik", lang: "İngilizce", score: 239.6087, p: 52.40 },
+  { name: "Yenimahalle Zeynep-Salih Alp MTAL (Yiyecek)", district: "Yenimahalle", type: "Mesleki ve Teknik", lang: "İngilizce", score: 237.8986, p: 53.01 },
+  { name: "Gölbaşı Mogan MTAL (Konaklama)", district: "Gölbaşı", type: "Mesleki ve Teknik", lang: "İngilizce", score: 236.2115, p: 53.62 },
+  { name: "Sincan Ahmet Andiçen MTAL (Muhasebe)", district: "Sincan", type: "Mesleki ve Teknik", lang: "İngilizce", score: 230.7165, p: 56.02 },
+  { name: "Mamak Battalgazi MTAL (Elektrik)", district: "Mamak", type: "Mesleki ve Teknik", lang: "İngilizce", score: 230.2281, p: 56.27 }
 ];
 
-// Gerçek Veriler (Örneklem)
-const realSchools: Record<string, Array<{name: string, type: string, lang: string, score: number, p: number}>> = {
-  "İstanbul": [
-    { name: "Galatasaray Lisesi", type: "Anadolu Lisesi", lang: "Fransızca", score: 500.00, p: 0.01 },
-    { name: "İstanbul Erkek Lisesi", type: "Anadolu Lisesi", lang: "Almanca", score: 497.42, p: 0.04 },
-    { name: "Kabataş Erkek Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 495.10, p: 0.08 },
-    { name: "Kabataş Erkek Lisesi", type: "Anadolu Lisesi", lang: "Almanca", score: 494.50, p: 0.10 },
-    { name: "Cağaloğlu Anadolu Lisesi", type: "Anadolu Lisesi", lang: "Almanca", score: 488.20, p: 0.26 },
-    { name: "Çapa Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 485.50, p: 0.38 },
-    { name: "Hüseyin Avni Sözen Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 482.10, p: 0.45 },
-    { name: "Kadıköy Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 478.90, p: 0.65 },
-    { name: "Sakıp Sabancı Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 475.60, p: 0.92 },
-    { name: "Beşiktaş Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 472.40, p: 1.20 },
-    { name: "Vefa Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 468.80, p: 1.55 },
-    { name: "Pertevniyal Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 465.20, p: 1.95 },
-    { name: "Şehit Münir Alkan Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 462.50, p: 2.15 },
-    { name: "Haydarpaşa Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 460.10, p: 2.45 },
-    { name: "Burak Bora Anadolu Lisesi", type: "Anadolu Lisesi", lang: "Fransızca", score: 458.50, p: 2.80 },
-    { name: "Kartal Anadolu İmam Hatip Lisesi", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 480.50, p: 0.55 },
-    { name: "Kadıköy Anadolu İmam Hatip Lisesi", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 465.00, p: 1.90 }
-  ],
-  "Ankara": [
-    { name: "Ankara Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 494.50, p: 0.09 },
-    { name: "Atatürk Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 485.20, p: 0.35 },
-    { name: "Gazi Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 478.10, p: 0.72 },
-    { name: "Ankara Pursaklar Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 475.50, p: 0.95 },
-    { name: "Cumhuriyet Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 472.30, p: 1.15 },
-    { name: "Mehmet Emin Resulzade Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 468.90, p: 1.45 },
-    { name: "Dr. Binnaz Ege - Dr. Rıdvan Ege Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 465.40, p: 1.80 },
-    { name: "Hacı Ömer Tarman Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 460.20, p: 2.30 },
-    { name: "Betül Can Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 455.10, p: 2.90 },
-    { name: "Ankara Anadolu Lisesi", type: "Anadolu Lisesi", lang: "Almanca", score: 450.50, p: 3.50 },
-    { name: "Nermin Mehmet Çekiç Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 448.20, p: 3.90 },
-    { name: "Ayrancı Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 445.50, p: 4.50 },
-    { name: "Yenimahalle Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 462.10, p: 2.10 },
-    { name: "Tevfik İleri Anadolu İmam Hatip Lisesi", type: "Anadolu İmam Hatip", lang: "İngilizce", score: 458.00, p: 2.60 }
-  ],
-  "İzmir": [
-     { name: "İzmir Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 493.50, p: 0.12 },
-     { name: "Bornova Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 478.20, p: 0.75 },
-     { name: "Bornova Anadolu Lisesi", type: "Anadolu Lisesi", lang: "Almanca", score: 476.50, p: 0.85 },
-     { name: "İzmir Atatürk Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 475.10, p: 0.98 },
-     { name: "Buca İnci-Özer Tırnaklı Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 472.80, p: 1.18 },
-     { name: "Karşıyaka Cihat Kora Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 465.50, p: 1.85 },
-     { name: "İzmir Kız Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 455.20, p: 2.95 },
-     { name: "Konak Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 450.10, p: 3.60 }
-  ],
-  "Bursa": [
-     { name: "Tofaş Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 485.50, p: 0.35 },
-     { name: "Bursa Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 470.20, p: 1.35 },
-     { name: "Nilüfer İMKB Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 475.80, p: 0.90 },
-     { name: "Ahmet Erdem Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 462.50, p: 2.10 },
-     { name: "Bursa Erkek Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 455.00, p: 2.90 }
-  ],
-  "Antalya": [
-      { name: "Yusuf Ziya Öner Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 482.50, p: 0.42 },
-      { name: "Antalya Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 472.10, p: 1.22 },
-      { name: "Adem Tolunay Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 468.50, p: 1.55 },
-      { name: "Dr. İlhami Tankut Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 458.20, p: 2.65 }
-  ],
-  "Adana": [
-      { name: "Adana Fen Lisesi", type: "Fen Lisesi", lang: "İngilizce", score: 484.50, p: 0.40 },
-      { name: "Adana Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 465.20, p: 1.95 },
-      { name: "Çukurova Toroslar Anadolu Lisesi", type: "Anadolu Lisesi", lang: "İngilizce", score: 452.80, p: 3.25 }
-  ]
-};
-
-const generateHighSchoolData = (): HighSchool[] => {
-    const data: HighSchool[] = [];
-    let idCounter = 1;
-
-    // Büyük şehir tanımları (Daha fazla okul üretmek için)
-    const metropolis = ["İstanbul", "Ankara", "İzmir"];
-    const largeCities = ["Bursa", "Antalya", "Adana", "Konya", "Gaziantep", "Kocaeli", "Mersin", "Diyarbakır"];
-    const midCities = ["Kayseri", "Samsun", "Balıkesir", "Aydın", "Denizli", "Sakarya", "Manisa", "Hatay", "Tekirdağ", "Eskişehir", "Trabzon", "Şanlıurfa", "Van"];
-
-    cities.forEach(city => {
-        // 1. Önce Gerçek Okulları Ekle (Varsa)
-        if (realSchools[city]) {
-            realSchools[city].forEach(school => {
-                data.push({
-                    id: (idCounter++).toString(),
-                    city: city,
-                    schoolName: school.name,
-                    type: school.type as any,
-                    language: school.lang,
-                    score: school.score,
-                    percentile: school.p,
-                    quota: Math.floor(Math.random() * 60) + 90
-                });
-            });
-        }
-
-        // 2. Simülasyon Okulları Ekle (Şehrin büyüklüğüne göre sayı değişir)
-        let schoolMultiplier = 1;
-        if (metropolis.includes(city)) schoolMultiplier = 6;
-        else if (largeCities.includes(city)) schoolMultiplier = 3.5;
-        else if (midCities.includes(city)) schoolMultiplier = 2;
-
-        // a) Fen Lisesi (Eğer gerçek listede yoksa veya ek olarak)
-        // Büyük şehirlerde birden fazla Fen Lisesi olur.
-        const fenCount = Math.ceil(schoolMultiplier * 0.5); 
-        for(let i=0; i<fenCount; i++) {
-             // Gerçek listede zaten "X Fen Lisesi" varsa tekrar eklememeye çalış (basit kontrol)
-             const exists = data.some(d => d.city === city && d.schoolName.includes(`${city} Fen Lisesi`));
-             if (i === 0 && exists) continue;
-
-             const suffix = i === 0 ? "" : ` ${i+1}.`;
-             data.push({
-                id: (idCounter++).toString(),
-                city: city,
-                schoolName: `${city} Fen Lisesi${suffix}`,
-                type: 'Fen Lisesi',
-                language: 'İngilizce',
-                score: 460 + (Math.random() * 30) - (i * 10), // Puan biraz düşerek gider
-                percentile: parseFloat((0.8 + (Math.random() * 1.5) + (i * 0.5)).toFixed(2)),
-                quota: 120
-            });
-        }
-
-        // b) Anadolu Liseleri
-        const anadoluCount = Math.ceil(8 * schoolMultiplier);
-        for(let i=1; i<=anadoluCount; i++) {
-            // Puan Skalası: 300 - 460 arası
-            const baseScore = 460 - (i * (160 / anadoluCount)) + (Math.random() * 10);
-            const limitedScore = Math.max(300, Math.min(490, baseScore));
-            
-            // Yüzdelik ters orantı: 490 -> %0.5, 300 -> %40
-            const p = parseFloat(((500 - limitedScore) / 4).toFixed(2));
-
-            // Gerçekçi isimler için numara yerine semt ismi varmış gibi davranalım
-            // Veya sadece "X Anadolu Lisesi" formatını koruyalım
-            const nameSuffix = metropolis.includes(city) ? `${i}. Bölge` : `${i}`;
-
-            data.push({
-                id: (idCounter++).toString(),
-                city: city,
-                schoolName: `${city} Anadolu Lisesi (${nameSuffix})`, 
-                type: 'Anadolu Lisesi',
-                language: Math.random() > 0.9 ? 'Almanca' : 'İngilizce',
-                score: parseFloat(limitedScore.toFixed(3)),
-                percentile: p,
-                quota: 90 + Math.floor(Math.random() * 150)
-            });
-        }
-
-        // c) Sosyal Bilimler
-        const sosCount = Math.ceil(schoolMultiplier * 0.4);
-        for(let i=1; i<=sosCount; i++) {
-            const suffix = sosCount > 1 ? ` ${i}` : "";
-            data.push({
-                id: (idCounter++).toString(),
-                city: city,
-                schoolName: `${city} Sosyal Bilimler Lisesi${suffix}`,
-                type: 'Sosyal Bilimler',
-                language: 'İngilizce',
-                score: 360 + Math.random() * 80,
-                percentile: parseFloat((10 + Math.random() * 10).toFixed(2)),
-                quota: 90
-            });
-        }
-
-        // d) İmam Hatip
-        const imamCount = Math.ceil(4 * schoolMultiplier);
-        for(let i=1; i<=imamCount; i++) {
-            const score = 250 + Math.random() * 210; // Geniş aralık, bazıları çok yüksek (proje) bazıları düşük
-            data.push({
-                id: (idCounter++).toString(),
-                city: city,
-                schoolName: `${city} Anadolu İmam Hatip Lisesi ${i}`,
-                type: 'Anadolu İmam Hatip',
-                language: Math.random() > 0.8 ? 'Arapça' : 'İngilizce',
-                score: parseFloat(score.toFixed(3)),
-                percentile: parseFloat(((500 - score) / 3.5).toFixed(2)),
-                quota: 60 + Math.floor(Math.random() * 60)
-            });
-        }
-
-         // e) Mesleki
-         const meslekCount = Math.ceil(5 * schoolMultiplier);
-         for(let i=1; i<=meslekCount; i++) {
-             const score = 200 + Math.random() * 180;
-             data.push({
-                 id: (idCounter++).toString(),
-                 city: city,
-                 schoolName: `${city} Mesleki ve Teknik Anadolu Lisesi ${i}`,
-                 type: 'Mesleki ve Teknik',
-                 language: 'İngilizce',
-                 score: parseFloat(score.toFixed(3)),
-                 percentile: parseFloat(((500 - score) / 2.5).toFixed(2)),
-                 quota: 120
-             });
-         }
-    });
-
-    return data.sort((a, b) => b.score - a.score);
-}
-
-export const highSchoolData = generateHighSchoolData();
+export const highSchoolData = realData.map((item, index) => ({
+  id: (index + 1).toString(),
+  city: "Ankara",
+  district: item.district,
+  schoolName: item.name,
+  type: item.type as any,
+  language: item.lang,
+  score: item.score,
+  percentile: item.p,
+  quota: 120 // Data setinde olmadığı için varsayılan değer
+}));

@@ -7,12 +7,15 @@ import {
   doc, 
   query, 
   where, 
-  getDoc 
+  getDoc,
+  setDoc,
+  orderBy
 } from 'firebase/firestore';
-import { Student, ExamResult } from '../types';
+import { Student, ExamResult, DailyQuestionLog } from '../types';
 
 const STUDENTS_COLLECTION = 'students';
 const EXAMS_COLLECTION = 'exams';
+const QUESTIONS_COLLECTION = 'question_logs';
 
 export const db = {
   // --- Students ---
@@ -49,6 +52,12 @@ export const db = {
     
     const deletePromises = examsSnapshot.docs.map(doc => deleteDoc(doc.ref));
     await Promise.all(deletePromises);
+    
+    // 3. Delete associated question logs
+    const qLogsQuery = query(collection(firestore, QUESTIONS_COLLECTION), where("studentId", "==", id));
+    const qLogsSnapshot = await getDocs(qLogsQuery);
+    const deleteLogsPromises = qLogsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deleteLogsPromises);
   },
 
   // --- Exams ---
@@ -79,6 +88,52 @@ export const db = {
 
   deleteExam: async (id: string) => {
     await deleteDoc(doc(firestore, EXAMS_COLLECTION, id));
+  },
+
+  // --- Question Logs ---
+  
+  // Add or Update a log for a specific date/student
+  saveQuestionLog: async (log: Omit<DailyQuestionLog, 'id'>): Promise<void> => {
+    // Check if log exists for this student and date
+    // Note: Multiple where clauses might require an index in some cases, but == and == usually works.
+    // If this fails, we can fetch by studentId and filter in memory as well, but usually this is fine.
+    const q = query(
+        collection(firestore, QUESTIONS_COLLECTION), 
+        where("studentId", "==", log.studentId),
+        where("date", "==", log.date)
+    );
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+        // Update existing
+        const docId = snapshot.docs[0].id;
+        await setDoc(doc(firestore, QUESTIONS_COLLECTION, docId), log, { merge: true });
+    } else {
+        // Create new
+        await addDoc(collection(firestore, QUESTIONS_COLLECTION), log);
+    }
+  },
+
+  getQuestionLogs: async (studentId: string, days: number = 30): Promise<DailyQuestionLog[]> => {
+     // Calculate start date
+     const date = new Date();
+     date.setDate(date.getDate() - days);
+     const startDate = date.toISOString().split('T')[0];
+
+     // Query only by studentId to avoid composite index requirement (equality + inequality)
+     const q = query(
+         collection(firestore, QUESTIONS_COLLECTION),
+         where("studentId", "==", studentId)
+     );
+
+     const snapshot = await getDocs(q);
+     let logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyQuestionLog));
+     
+     // Client-side filtering
+     logs = logs.filter(log => log.date >= startDate);
+
+     // Client-side sorting
+     return logs.sort((a, b) => a.date.localeCompare(b.date));
   },
   
   // --- Analysis Helpers ---

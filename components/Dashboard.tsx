@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  BarChart, Bar, Cell, Legend 
+  BarChart, Bar, Cell 
 } from 'recharts';
 import { db } from '../services/db';
 import { ExamResult, Student, ExamType } from '../types';
@@ -37,23 +37,23 @@ const Dashboard: React.FC = () => {
   const [selectedTrendMetric, setSelectedTrendMetric] = useState<string>('score');
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const studentsData = await db.getStudents();
-        const examsData = await db.getExams();
-        
-        setStudents(studentsData);
-        setExams(examsData);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchDashboardData();
   }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const studentsData = await db.getStudents();
+      const examsData = await db.getExams();
+      
+      setStudents(studentsData);
+      setExams(examsData);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // --- Helpers ---
   const getFormattedMonth = (dateStr: string) => {

@@ -67,6 +67,14 @@ export interface ExamResult {
   totalScore: number;
 }
 
+export interface DailyQuestionLog {
+  id: string;
+  studentId: string;
+  date: string; // YYYY-MM-DD
+  subjects: Record<string, { correct: number; incorrect: number } | number>; // Updated to store breakdown and allow legacy number format
+  total: number;
+}
+
 export interface DashboardStats {
   totalStudents: number;
   totalExams: number;

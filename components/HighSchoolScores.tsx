@@ -6,7 +6,7 @@ const ITEMS_PER_PAGE = 20;
 
 const HighSchoolScores: React.FC = () => {
   const [filters, setFilters] = useState({
-    city: '',
+    district: '',
     type: '',
     minScore: '',
     maxPercentile: ''
@@ -19,19 +19,19 @@ const HighSchoolScores: React.FC = () => {
   }, [filters]);
 
   const options = useMemo(() => {
-    const cities = Array.from(new Set(highSchoolData.map(i => i.city))).sort();
+    const districts = Array.from(new Set(highSchoolData.map(i => i.district))).sort();
     const types = Array.from(new Set(highSchoolData.map(i => i.type))).sort();
-    return { cities, types };
+    return { districts, types };
   }, []);
 
   const filteredData = useMemo(() => {
     return highSchoolData.filter(item => {
-      const matchCity = filters.city === '' || item.city === filters.city;
+      const matchDistrict = filters.district === '' || item.district === filters.district;
       const matchType = filters.type === '' || item.type === filters.type;
       const matchMinScore = filters.minScore === '' || item.score >= parseFloat(filters.minScore);
       const matchPercentile = filters.maxPercentile === '' || item.percentile <= parseFloat(filters.maxPercentile);
       
-      return matchCity && matchType && matchMinScore && matchPercentile;
+      return matchDistrict && matchType && matchMinScore && matchPercentile;
     });
   }, [filters]);
 
@@ -46,7 +46,7 @@ const HighSchoolScores: React.FC = () => {
   };
 
   const clearFilters = () => {
-    setFilters({ city: '', type: '', minScore: '', maxPercentile: '' });
+    setFilters({ district: '', type: '', minScore: '', maxPercentile: '' });
   };
 
   const hasActiveFilters = Object.values(filters).some(val => val !== '');
@@ -57,10 +57,10 @@ const HighSchoolScores: React.FC = () => {
         <div>
            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <School className="text-indigo-600" />
-            Lise Taban Puanları (2025 Simülasyon)
+            Ankara Lise Taban Puanları (2025 LGS)
           </h2>
           <p className="text-slate-500 text-sm mt-1">
-            2025 verileri henüz açıklanmadığı için 2024 verileri baz alınarak oluşturulmuştur.
+            2025 LGS verileri kullanılarak hazırlanmıştır. Sadece Ankara ili okullarını içerir.
           </p>
         </div>
         {hasActiveFilters && (
@@ -77,19 +77,19 @@ const HighSchoolScores: React.FC = () => {
       {/* Filter Section */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* City Filter */}
+            {/* District Filter */}
             <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Şehir</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">İlçe</label>
                 <div className="relative">
                     <MapPin className="absolute left-3 top-2.5 text-slate-400" size={16} />
                     <select 
                         className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        value={filters.city}
-                        onChange={(e) => handleFilterChange('city', e.target.value)}
+                        value={filters.district}
+                        onChange={(e) => handleFilterChange('district', e.target.value)}
                     >
-                        <option value="">Tüm Şehirler</option>
-                        {options.cities.map(city => (
-                            <option key={city} value={city}>{city}</option>
+                        <option value="">Tüm İlçeler</option>
+                        {options.districts.map(dist => (
+                            <option key={dist} value={dist}>{dist}</option>
                         ))}
                     </select>
                 </div>
@@ -151,7 +151,7 @@ const HighSchoolScores: React.FC = () => {
             <table className="w-full text-sm text-left">
                 <thead className="bg-white text-slate-500 border-b border-slate-100">
                     <tr>
-                        <th className="px-6 py-4 font-medium">Okul / Şehir</th>
+                        <th className="px-6 py-4 font-medium">Okul / İlçe</th>
                         <th className="px-6 py-4 font-medium">Tür</th>
                         <th className="px-6 py-4 font-medium">Eğitim Dili</th>
                         <th className="px-6 py-4 font-medium text-right">Kontenjan</th>
@@ -166,7 +166,7 @@ const HighSchoolScores: React.FC = () => {
                                 <td className="px-6 py-4">
                                     <div className="font-medium text-slate-800">{item.schoolName}</div>
                                     <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                                        <MapPin size={12} /> {item.city}
+                                        <MapPin size={12} /> {item.city} / {item.district}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
@@ -192,7 +192,7 @@ const HighSchoolScores: React.FC = () => {
                                     %{item.percentile.toFixed(2)}
                                 </td>
                                 <td className="px-6 py-4 text-right font-black text-slate-800 text-base">
-                                    {item.score.toFixed(3)}
+                                    {item.score.toFixed(4)}
                                 </td>
                             </tr>
                         ))
