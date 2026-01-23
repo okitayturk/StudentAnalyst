@@ -19,7 +19,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/exam-entry', icon: <PlusCircle size={20} />, label: 'Deneme Gir' },
     { path: '/question-tracking', icon: <PenTool size={20} />, label: 'Soru Takibi' },
     { path: '/calculators', icon: <Calculator size={20} />, label: 'Puan Hesaplama' },
-    { path: '/university-scores', icon: <BookOpen size={20} />, label: 'Üniversite Puanları' },
     { path: '/high-school-scores', icon: <School size={20} />, label: 'Lise Puanları' },
   ];
 

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../services/db';
 import { Student, DailyQuestionLog } from '../types';
-import { PenTool, Calendar, Save, BarChart2, CheckCircle, GraduationCap, Edit2, ChevronRight, Eraser, Filter, Calculator } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { PenTool, Calendar, Save, BarChart2, CheckCircle, GraduationCap, Edit2, ChevronRight, Eraser, Filter, Calculator, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
 // Define the two main groups as requested
 const SUBJECTS_GROUPS = {
@@ -41,9 +41,16 @@ const QuestionTracking: React.FC = () => {
   const [activeExamGroup, setActiveExamGroup] = useState<'LGS' | 'YKS'>('LGS');
 
   // --- Analysis State ---
-  // Instead of simple range string, we now use separate filters like Entry mode
   const [analysisFilterMonth, setAnalysisFilterMonth] = useState<string>('');
   const [analysisFilterWeek, setAnalysisFilterWeek] = useState<string>('');
+  
+  // NEW: Trend Chart Subject Filters
+  const [correctTrendFilter, setCorrectTrendFilter] = useState<string>('all');
+  const [incorrectTrendFilter, setIncorrectTrendFilter] = useState<string>('all');
+  const [pieChartFilter, setPieChartFilter] = useState<string>('all');
+  
+  // NEW: Main Bar Chart Time Scale (Global for Analysis Tab)
+  const [chartTimeScale, setChartTimeScale] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
   const [logs, setLogs] = useState<DailyQuestionLog[]>([]);
 
@@ -279,34 +286,173 @@ const QuestionTracking: React.FC = () => {
   }, [logs, analysisFilterMonth, analysisFilterWeek]);
 
 
-  // --- Analysis Data Preparation ---
-  const chartData = useMemo(() => {
-      return filteredAnalysisLogs.map(log => {
-          const flattenedSubjects: Record<string, number> = {};
-          
-          Object.entries(log.subjects).forEach(([key, val]) => {
-              const v = val as any;
-              if (typeof v === 'number') {
-                  flattenedSubjects[key] = v;
-              } else {
-                  flattenedSubjects[key] = (v.correct || 0) + (v.incorrect || 0);
-              }
-          });
+  // --- CENTRAL AGGREGATION LOGIC ---
+  // Create a single aggregated dataset based on chartTimeScale
+  const aggregatedData = useMemo(() => {
+      if (filteredAnalysisLogs.length === 0) return [];
 
-          const item: any = {
-              date: log.date.split('-').slice(1).join('/'), // MM/DD
-              ...flattenedSubjects,
-              Toplam: log.total
-          };
-          return item;
+      const grouped: Record<string, any> = {};
+
+      filteredAnalysisLogs.forEach(log => {
+          let key = '';
+          let label = '';
+          let sortKey = '';
+
+          if (chartTimeScale === 'daily') {
+             key = log.date;
+             sortKey = log.date;
+             label = log.date.split('-').slice(1).join('/');
+          } else if (chartTimeScale === 'weekly') {
+             const date = new Date(log.date);
+             const monday = getMonday(date);
+             sortKey = monday.toISOString().split('T')[0];
+             const sunday = new Date(monday);
+             sunday.setDate(monday.getDate() + 6);
+             label = `${monday.getDate()}/${monday.getMonth()+1} - ${sunday.getDate()}/${sunday.getMonth()+1}`;
+             key = sortKey;
+          } else { // monthly
+             key = log.date.substring(0, 7); // YYYY-MM
+             sortKey = key;
+             const [y, m] = key.split('-');
+             const d = new Date(parseInt(y), parseInt(m)-1);
+             label = d.toLocaleString('tr-TR', { month: 'long', year: 'numeric' });
+          }
+
+          if (!grouped[key]) {
+              grouped[key] = { 
+                  date: label, 
+                  rawDate: sortKey, 
+                  total: 0, 
+                  totalCorrect: 0, 
+                  totalIncorrect: 0,
+                  subjects: {} // Store breakdown
+              };
+          }
+
+          grouped[key].total += log.total;
+
+          Object.entries(log.subjects).forEach(([subj, val]) => {
+              const v = val as any;
+              let c = 0, i = 0;
+              if (typeof v === 'number') {
+                  c = v; // Legacy number format
+              } else {
+                  c = v.correct || 0;
+                  i = v.incorrect || 0;
+              }
+              
+              grouped[key].totalCorrect += c;
+              grouped[key].totalIncorrect += i;
+
+              if (!grouped[key].subjects[subj]) grouped[key].subjects[subj] = { c: 0, i: 0 };
+              grouped[key].subjects[subj].c += c;
+              grouped[key].subjects[subj].i += i;
+          });
       });
-  }, [filteredAnalysisLogs]);
+
+      return Object.values(grouped).sort((a: any, b: any) => a.rawDate.localeCompare(b.rawDate));
+  }, [filteredAnalysisLogs, chartTimeScale]);
+
+  // 1. Stacked Bar Data (Ders Bazlı Dağılım)
+  const chartData = useMemo(() => {
+      return aggregatedData.map((item: any) => {
+          const subjCounts: any = {};
+          Object.entries(item.subjects).forEach(([k, v]: any) => subjCounts[k] = v.c + v.i);
+          return {
+              date: item.date,
+              rawDate: item.rawDate,
+              ...subjCounts,
+              Toplam: item.total
+          };
+      });
+  }, [aggregatedData]);
+
+  // 2. Correct/Incorrect Bar Data
+  const dailyTotalAccuracyData = useMemo(() => {
+      return aggregatedData.map((item: any) => ({
+          date: item.date,
+          Doğru: item.totalCorrect,
+          Yanlış: item.totalIncorrect
+      }));
+  }, [aggregatedData]);
+
+  // 3. Trend Data Generator (Success Rates)
+  const getTrendData = (subjectFilter: string, type: 'correct' | 'incorrect') => {
+      return aggregatedData.map((item: any) => {
+          let c = 0, i = 0;
+          if (subjectFilter === 'all') {
+              c = item.totalCorrect;
+              i = item.totalIncorrect;
+          } else {
+              const s = item.subjects[subjectFilter];
+              if (s) { c = s.c; i = s.i; }
+          }
+          
+          const total = c + i;
+          const percentage = total > 0 ? (type === 'correct' ? c : i) / total * 100 : 0;
+          
+          return {
+              date: item.date,
+              value: parseFloat(percentage.toFixed(1))
+          };
+      });
+  };
+
+  const correctTrendData = useMemo(() => getTrendData(correctTrendFilter, 'correct'), [aggregatedData, correctTrendFilter]);
+  const incorrectTrendData = useMemo(() => getTrendData(incorrectTrendFilter, 'incorrect'), [aggregatedData, incorrectTrendFilter]);
+
+  // Dynamic Y-Axis domains
+  const correctRateDomain = useMemo(() => {
+      if (correctTrendData.length === 0) return [0, 100];
+      const minVal = Math.min(...correctTrendData.map((d: any) => d.value));
+      if (minVal < 50) return [0, 100];
+      if (minVal < 75) return [50, 100];
+      return [75, 100];
+  }, [correctTrendData]);
+
+  const incorrectRateDomain = useMemo(() => {
+      if (incorrectTrendData.length === 0) return [0, 100];
+      const maxVal = Math.max(...incorrectTrendData.map((d: any) => d.value));
+      if (maxVal > 50) return [0, 100];
+      if (maxVal > 25) return [0, 50];
+      return [0, 25];
+  }, [incorrectTrendData]);
+
+  // Pie Chart Data (Global Aggregate)
+  const pieChartData = useMemo(() => {
+      let correct = 0;
+      let incorrect = 0;
+      
+      // Calculate from filtered logs directly as Pie is usually a snapshot of the selected period
+      filteredAnalysisLogs.forEach(log => {
+          const processSubject = (key: string, val: any) => {
+               let c = 0, i = 0;
+               if (typeof val === 'number') c = val;
+               else { c = val.correct || 0; i = val.incorrect || 0; }
+               correct += c;
+               incorrect += i;
+          };
+
+          if (pieChartFilter === 'all') {
+              Object.entries(log.subjects).forEach(([k, v]) => processSubject(k, v));
+          } else {
+              const val = log.subjects[pieChartFilter];
+              if (val) processSubject(pieChartFilter, val);
+          }
+      });
+      
+      if (correct === 0 && incorrect === 0) return [];
+
+      return [
+          { name: 'Doğru', value: correct, color: '#10b981' }, 
+          { name: 'Yanlış', value: incorrect, color: '#ef4444' } 
+      ];
+  }, [filteredAnalysisLogs, pieChartFilter]);
 
   // Find which subjects have data to show in legend
   const activeSubjects = useMemo(() => {
       const keys = new Set<string>();
       logs.forEach(l => Object.keys(l.subjects).forEach(k => {
-          // Check for data existence in both old and new formats
           const val = l.subjects[k] as any;
           if (typeof val === 'number') {
               if (val > 0) keys.add(k);
@@ -317,6 +463,31 @@ const QuestionTracking: React.FC = () => {
       return Array.from(keys);
   }, [logs]);
 
+  // Reusable Time Scale Toggle Button Group
+  const TimeScaleControls = () => (
+    <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
+         <button 
+            onClick={() => setChartTimeScale('daily')}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition ${chartTimeScale === 'daily' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+         >
+             Günlük
+         </button>
+         <button 
+            onClick={() => setChartTimeScale('weekly')}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition ${chartTimeScale === 'weekly' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+         >
+             Haftalık
+         </button>
+         <button 
+            onClick={() => setChartTimeScale('monthly')}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition ${chartTimeScale === 'monthly' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+         >
+             Aylık
+         </button>
+    </div>
+  );
+
+  const getTimeLabel = () => chartTimeScale === 'daily' ? 'Günlük' : chartTimeScale === 'weekly' ? 'Haftalık' : 'Aylık';
 
   if (loading) return <div className="p-8 text-center text-slate-500">Yükleniyor...</div>;
 
@@ -665,16 +836,20 @@ const QuestionTracking: React.FC = () => {
            <div className="space-y-6">
                 {/* Main Stacked Bar Chart */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        <BarChart2 className="text-indigo-500" />
-                        Ders Bazlı Günlük Dağılım
-                    </h3>
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <BarChart2 className="text-indigo-500" />
+                            Ders Bazlı {getTimeLabel()} Dağılım
+                        </h3>
+                        <TimeScaleControls />
+                    </div>
+                    
                     <div className="w-full h-96">
                         {chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="date" />
+                                    <XAxis dataKey="date" fontSize={chartTimeScale !== 'daily' ? 10 : 12}/>
                                     <YAxis />
                                     <Tooltip 
                                         cursor={{fill: '#f8fafc'}}
@@ -700,17 +875,55 @@ const QuestionTracking: React.FC = () => {
                     </div>
                 </div>
 
+                 {/* Daily Correct/Incorrect Chart */}
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <CheckCircle className="text-green-600" size={20} />
+                            {getTimeLabel()} Doğru / Yanlış Dağılımı
+                        </h3>
+                        <TimeScaleControls />
+                    </div>
+
+                    <div className="w-full h-80">
+                        {dailyTotalAccuracyData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={dailyTotalAccuracyData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="date" fontSize={chartTimeScale !== 'daily' ? 10 : 12}/>
+                                    <YAxis />
+                                    <Tooltip 
+                                        cursor={{fill: '#f8fafc'}}
+                                        contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                    />
+                                    <Legend />
+                                    <Bar dataKey="Doğru" stackId="a" fill="#10b981" radius={[0,0,4,4]} />
+                                    <Bar dataKey="Yanlış" stackId="a" fill="#ef4444" radius={[4,4,0,0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                             <div className="h-full flex items-center justify-center text-slate-400">
+                                Kayıt bulunamadı.
+                            </div>
+                        )}
+                    </div>
+                 </div>
+
                  {/* Trend Line Chart */}
                  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6">
-                        Günlük Toplam Soru Trendi
-                    </h3>
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800">
+                            {getTimeLabel()} Toplam Soru Trendi
+                        </h3>
+                        <TimeScaleControls />
+                    </div>
+
                     <div className="w-full h-80">
                          {chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="date" />
+                                    <XAxis dataKey="date" fontSize={chartTimeScale !== 'daily' ? 10 : 12}/>
                                     <YAxis />
                                     <Tooltip 
                                          contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
@@ -724,6 +937,168 @@ const QuestionTracking: React.FC = () => {
                             </div>
                          )}
                     </div>
+                 </div>
+
+                 {/* Correct/Incorrect Pie Chart (TOTAL with FILTER) */}
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <PieChartIcon className="text-indigo-500" />
+                            Doğru / Yanlış Dağılımı {pieChartFilter !== 'all' ? `(${pieChartFilter})` : '(Genel)'}
+                        </h3>
+                        <select 
+                            className="text-xs border border-slate-200 rounded-lg py-1.5 px-3 bg-slate-50 text-slate-700 outline-none focus:ring-1 focus:ring-indigo-500"
+                            value={pieChartFilter}
+                            onChange={(e) => setPieChartFilter(e.target.value)}
+                        >
+                            <option value="all">Genel (Tümü)</option>
+                            {activeSubjects.map(sub => (
+                                <option key={sub} value={sub}>{sub}</option>
+                            ))}
+                        </select>
+                    </div>
+                    
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-8 h-80">
+                         {pieChartData.length > 0 ? (
+                            <>
+                                <div className="w-full md:w-1/2 h-full relative">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={pieChartData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={100}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {pieChartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip 
+                                                contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                            />
+                                            <Legend verticalAlign="bottom" height={36}/>
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] text-center pointer-events-none">
+                                        <span className="text-3xl font-black text-slate-800">
+                                            {pieChartData.reduce((a, b) => a + b.value, 0)}
+                                        </span>
+                                        <span className="block text-xs text-slate-500 font-bold uppercase">Soru</span>
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                     <div className="bg-green-50 p-4 rounded-xl border border-green-100 text-center min-w-[120px]">
+                                        <p className="text-xs text-green-600 font-bold uppercase mb-1">Doğru</p>
+                                        <p className="text-2xl font-black text-green-700">{pieChartData.find(x => x.name === 'Doğru')?.value || 0}</p>
+                                     </div>
+                                     <div className="bg-red-50 p-4 rounded-xl border border-red-100 text-center min-w-[120px]">
+                                        <p className="text-xs text-red-600 font-bold uppercase mb-1">Yanlış</p>
+                                        <p className="text-2xl font-black text-red-700">{pieChartData.find(x => x.name === 'Yanlış')?.value || 0}</p>
+                                     </div>
+                                </div>
+                            </>
+                         ) : (
+                            <div className="text-slate-400">Kayıt bulunamadı.</div>
+                         )}
+                    </div>
+                 </div>
+
+                 {/* Correct & Incorrect Trend Charts Split */}
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                     {/* Correct Trend */}
+                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <TrendingUp className="text-green-600" />
+                                Doğru Başarı Oranı (%)
+                            </h3>
+                            <div className="flex flex-col items-end gap-2">
+                                <TimeScaleControls />
+                                <select 
+                                    className="text-xs border border-slate-200 rounded-lg py-1.5 px-3 bg-slate-50 text-slate-700 outline-none focus:ring-1 focus:ring-indigo-500"
+                                    value={correctTrendFilter}
+                                    onChange={(e) => setCorrectTrendFilter(e.target.value)}
+                                >
+                                    <option value="all">Genel (Tümü)</option>
+                                    {activeSubjects.map(sub => (
+                                        <option key={sub} value={sub}>{sub}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div className="w-full h-80">
+                            {correctTrendData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={correctTrendData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="date" fontSize={chartTimeScale !== 'daily' ? 10 : 12}/>
+                                        <YAxis domain={correctRateDomain} />
+                                        <Tooltip 
+                                             contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                             formatter={(value: number) => [`%${value}`, 'Doğru Oranı']}
+                                        />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="value" name="Doğru Oranı" stroke="#10b981" strokeWidth={3} dot={{r:4}} activeDot={{r: 6}} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-slate-400">
+                                    Kayıt bulunamadı.
+                                </div>
+                            )}
+                        </div>
+                     </div>
+
+                     {/* Incorrect Trend */}
+                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col">
+                         <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <TrendingUp className="text-red-500" />
+                                Yanlış Oranı (%)
+                            </h3>
+                            <div className="flex flex-col items-end gap-2">
+                                <TimeScaleControls />
+                                <select 
+                                    className="text-xs border border-slate-200 rounded-lg py-1.5 px-3 bg-slate-50 text-slate-700 outline-none focus:ring-1 focus:ring-indigo-500"
+                                    value={incorrectTrendFilter}
+                                    onChange={(e) => setIncorrectTrendFilter(e.target.value)}
+                                >
+                                    <option value="all">Genel (Tümü)</option>
+                                    {activeSubjects.map(sub => (
+                                        <option key={sub} value={sub}>{sub}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="w-full h-80">
+                            {incorrectTrendData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={incorrectTrendData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="date" fontSize={chartTimeScale !== 'daily' ? 10 : 12}/>
+                                        <YAxis domain={incorrectRateDomain} />
+                                        <Tooltip 
+                                             contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                             formatter={(value: number) => [`%${value}`, 'Yanlış Oranı']}
+                                        />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="value" name="Yanlış Oranı" stroke="#ef4444" strokeWidth={3} dot={{r:4}} activeDot={{r: 6}} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-slate-400">
+                                    Kayıt bulunamadı.
+                                </div>
+                            )}
+                        </div>
+                     </div>
                  </div>
            </div>
        )}

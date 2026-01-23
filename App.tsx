@@ -6,7 +6,6 @@ import Students from './components/Students';
 import ExamEntry from './components/ExamEntry';
 import Calculators from './components/Calculators';
 import ExamDetails from './components/ExamDetails';
-import UniversityScores from './components/UniversityScores';
 import HighSchoolScores from './components/HighSchoolScores';
 import QuestionTracking from './components/QuestionTracking';
 
@@ -21,7 +20,6 @@ function App() {
           <Route path="/question-tracking" element={<QuestionTracking />} />
           <Route path="/calculators" element={<Calculators />} />
           <Route path="/exam/:id" element={<ExamDetails />} />
-          <Route path="/university-scores" element={<UniversityScores />} />
           <Route path="/high-school-scores" element={<HighSchoolScores />} />
         </Routes>
       </Layout>
