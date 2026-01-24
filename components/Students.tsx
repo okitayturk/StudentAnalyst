@@ -293,7 +293,7 @@ const Students: React.FC = () => {
                                         stroke="#64748b" 
                                         tickLine={false}
                                         axisLine={false}
-                                        domain={yAxisDomain}
+                                        domain={yAxisDomain as any}
                                     />
                                     <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '3 3' }} />
                                     <Line 

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../services/db';
 import { Student, DailyQuestionLog } from '../types';
-import { PenTool, Calendar, Save, BarChart2, CheckCircle, GraduationCap, Edit2, ChevronRight, Eraser, Filter, Calculator, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { PenTool, Calendar, Save, BarChart2, CheckCircle, GraduationCap, Edit2, ChevronRight, Eraser, Filter, Calculator, PieChart as PieChartIcon, TrendingUp, XCircle, Target } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, ReferenceLine, ReferenceArea } from 'recharts';
 
 // Define the two main groups as requested
 const SUBJECTS_GROUPS = {
@@ -52,6 +52,9 @@ const QuestionTracking: React.FC = () => {
   // NEW: Main Bar Chart Time Scale (Global for Analysis Tab)
   const [chartTimeScale, setChartTimeScale] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
+  // Dynamic Target Threshold State
+  const [targetThreshold, setTargetThreshold] = useState<number>(80);
+
   const [logs, setLogs] = useState<DailyQuestionLog[]>([]);
 
   useEffect(() => {
@@ -69,6 +72,35 @@ const QuestionTracking: React.FC = () => {
     };
     fetchStudents();
   }, []);
+
+  // Update default threshold when time scale changes
+  useEffect(() => {
+    if (chartTimeScale === 'weekly') setTargetThreshold(560);
+    else if (chartTimeScale === 'monthly') setTargetThreshold(2400);
+    else setTargetThreshold(80);
+  }, [chartTimeScale]);
+
+  // Generate options for the threshold dropdown
+  const thresholdOptions = useMemo(() => {
+      if (chartTimeScale === 'daily') {
+          return [
+              10, 20, 30, 40, 50, 60, 70, 75, 80, 90, 100, 
+              110, 120, 130, 140, 150, 175, 200, 250, 300, 400, 500
+          ];
+      }
+      if (chartTimeScale === 'weekly') {
+          // Daily * 7 approx
+          return [
+              70, 140, 210, 280, 350, 420, 490, 500, 560, 630, 700, 
+              770, 840, 900, 1000, 1200, 1500, 2000
+          ];
+      }
+      // Monthly (Daily * 30 approx)
+      return [
+          300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000, 
+          3300, 3600, 4000, 4500, 5000, 6000, 7500, 9000, 10000
+      ];
+  }, [chartTimeScale]);
 
   // Fetch existing log when student or date changes in Entry Mode
   useEffect(() => {
@@ -367,6 +399,17 @@ const QuestionTracking: React.FC = () => {
       });
   }, [aggregatedData]);
 
+  // Calculate Threshold Stats for Total Questions (Above/Below Target)
+  const thresholdStats = useMemo(() => {
+      let below = 0;
+      let above = 0;
+      chartData.forEach((d: any) => {
+          if (d.Toplam < targetThreshold) below++;
+          else above++;
+      });
+      return { below, above };
+  }, [chartData, targetThreshold]);
+
   // 2. Correct/Incorrect Bar Data
   const dailyTotalAccuracyData = useMemo(() => {
       return aggregatedData.map((item: any) => ({
@@ -375,6 +418,35 @@ const QuestionTracking: React.FC = () => {
           Yanlış: item.totalIncorrect
       }));
   }, [aggregatedData]);
+
+  // Calculate Y-Axis Domain for Accuracy Chart
+  const accuracyChartDomain = useMemo(() => {
+    if (dailyTotalAccuracyData.length === 0) return [0, 'auto'];
+    
+    // For stacked bars, we need the sum of the stack
+    const totals = dailyTotalAccuracyData.map(d => (d.Doğru || 0) + (d.Yanlış || 0));
+    const maxVal = Math.max(...totals);
+    
+    // Ensure the domain covers the target threshold comfortably
+    const topEdge = Math.max(maxVal, targetThreshold);
+
+    // Add about 10% padding if maxVal is close to target or larger
+    return [0, Math.ceil(topEdge * 1.1)];
+  }, [dailyTotalAccuracyData, targetThreshold]);
+
+  // Calculate Y-Axis Domain for Total Trend Chart
+  const totalTrendDomain = useMemo(() => {
+    if (chartData.length === 0) return [0, 'auto'];
+
+    const totals = chartData.map((d: any) => d.Toplam || 0);
+    const maxVal = Math.max(...totals);
+    
+    // Ensure the domain covers the target threshold comfortably
+    const topEdge = Math.max(maxVal, targetThreshold);
+
+    return [0, Math.ceil(topEdge * 1.1)];
+  }, [chartData, targetThreshold]);
+
 
   // 3. Trend Data Generator (Success Rates)
   const getTrendData = (subjectFilter: string, type: 'correct' | 'incorrect') => {
@@ -400,6 +472,28 @@ const QuestionTracking: React.FC = () => {
 
   const correctTrendData = useMemo(() => getTrendData(correctTrendFilter, 'correct'), [aggregatedData, correctTrendFilter]);
   const incorrectTrendData = useMemo(() => getTrendData(incorrectTrendFilter, 'incorrect'), [aggregatedData, incorrectTrendFilter]);
+
+  // Calculate Threshold Stats for Correct Rate (Above/Below 85%)
+  const correctThresholdStats = useMemo(() => {
+      let below = 0;
+      let above = 0;
+      correctTrendData.forEach((d: any) => {
+          if (d.value < 85) below++;
+          else above++;
+      });
+      return { below, above };
+  }, [correctTrendData]);
+
+  // Calculate Threshold Stats for Incorrect Rate (Above/Below 15%)
+  const incorrectThresholdStats = useMemo(() => {
+      let good = 0; // <= 15
+      let bad = 0;  // > 15
+      incorrectTrendData.forEach((d: any) => {
+          if (d.value > 15) bad++;
+          else good++;
+      });
+      return { good, bad };
+  }, [incorrectTrendData]);
 
   // Dynamic Y-Axis domains
   const correctRateDomain = useMemo(() => {
@@ -487,6 +581,25 @@ const QuestionTracking: React.FC = () => {
     </div>
   );
 
+  // NEW: Reusable Target Dropdown for Chart Headers
+  const TargetDropdown = () => (
+      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-sm">
+        <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+            <Target size={12} />
+            Hedef:
+        </span>
+        <select 
+            className="bg-transparent text-xs font-bold text-indigo-600 focus:outline-none cursor-pointer appearance-none pr-1"
+            value={targetThreshold}
+            onChange={(e) => setTargetThreshold(Number(e.target.value))}
+        >
+            {thresholdOptions.map(val => (
+                <option key={val} value={val}>{val}</option>
+            ))}
+        </select>
+    </div>
+  );
+
   const getTimeLabel = () => chartTimeScale === 'daily' ? 'Günlük' : chartTimeScale === 'weekly' ? 'Haftalık' : 'Aylık';
 
   if (loading) return <div className="p-8 text-center text-slate-500">Yükleniyor...</div>;
@@ -558,7 +671,7 @@ const QuestionTracking: React.FC = () => {
                 </div>
             )}
 
-            {/* Analysis Filters moved here to be prominent */}
+            {/* Analysis Filters */}
             {activeTab === 'analysis' && (
                 <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto mt-auto">
                     <div className="w-full md:w-40">
@@ -603,6 +716,7 @@ const QuestionTracking: React.FC = () => {
             )}
        </div>
 
+       {/* ... rest of the component (Charts) ... */}
        {/* --- ENTRY MODE --- */}
        {activeTab === 'entry' && (
            <div className="space-y-6">
@@ -882,7 +996,23 @@ const QuestionTracking: React.FC = () => {
                             <CheckCircle className="text-green-600" size={20} />
                             {getTimeLabel()} Doğru / Yanlış Dağılımı
                         </h3>
-                        <TimeScaleControls />
+                        <div className="flex items-center gap-4">
+                            <div className="px-3 py-1 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-sm">
+                                %{thresholdStats.above + thresholdStats.below > 0 
+                                    ? Math.round((thresholdStats.above / (thresholdStats.above + thresholdStats.below)) * 100) 
+                                    : 0} Başarı
+                            </div>
+                            <div className="flex items-center gap-3 text-sm">
+                                <span className="flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">
+                                    <CheckCircle size={14} /> {thresholdStats.above}
+                                </span>
+                                <span className="flex items-center gap-1 text-red-500 font-bold bg-red-50 px-2 py-1 rounded">
+                                    <XCircle size={14} /> {thresholdStats.below}
+                                </span>
+                            </div>
+                            <TargetDropdown />
+                            <TimeScaleControls />
+                        </div>
                     </div>
 
                     <div className="w-full h-80">
@@ -890,13 +1020,20 @@ const QuestionTracking: React.FC = () => {
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={dailyTotalAccuracyData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <ReferenceArea y1={accuracyChartDomain[0]} y2={targetThreshold} fill="#fee2e2" fillOpacity={0.5} stroke="none" />
                                     <XAxis dataKey="date" fontSize={chartTimeScale !== 'daily' ? 10 : 12}/>
-                                    <YAxis />
+                                    <YAxis domain={accuracyChartDomain as any} />
                                     <Tooltip 
                                         cursor={{fill: '#f8fafc'}}
                                         contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
                                     />
                                     <Legend />
+                                    <ReferenceLine 
+                                        y={targetThreshold} 
+                                        stroke="red" 
+                                        strokeDasharray="3 3" 
+                                        label={{ position: 'insideTopRight', value: `Hedef: ${targetThreshold}`, fill: '#ef4444', fontSize: 12, fontWeight: 'bold' }} 
+                                    />
                                     <Bar dataKey="Doğru" stackId="a" fill="#10b981" radius={[0,0,4,4]} />
                                     <Bar dataKey="Yanlış" stackId="a" fill="#ef4444" radius={[4,4,0,0]} />
                                 </BarChart>
@@ -915,7 +1052,23 @@ const QuestionTracking: React.FC = () => {
                         <h3 className="text-lg font-bold text-slate-800">
                             {getTimeLabel()} Toplam Soru Trendi
                         </h3>
-                        <TimeScaleControls />
+                        <div className="flex items-center gap-4">
+                            <div className="px-3 py-1 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-sm">
+                                %{thresholdStats.above + thresholdStats.below > 0 
+                                    ? Math.round((thresholdStats.above / (thresholdStats.above + thresholdStats.below)) * 100) 
+                                    : 0} Başarı
+                            </div>
+                            <div className="flex items-center gap-3 text-sm">
+                                <span className="flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">
+                                    <CheckCircle size={14} /> {thresholdStats.above}
+                                </span>
+                                <span className="flex items-center gap-1 text-red-500 font-bold bg-red-50 px-2 py-1 rounded">
+                                    <XCircle size={14} /> {thresholdStats.below}
+                                </span>
+                            </div>
+                            <TargetDropdown />
+                            <TimeScaleControls />
+                        </div>
                     </div>
 
                     <div className="w-full h-80">
@@ -923,12 +1076,25 @@ const QuestionTracking: React.FC = () => {
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <ReferenceArea y1={totalTrendDomain[0]} y2={targetThreshold} fill="#fee2e2" fillOpacity={0.5} stroke="none" />
                                     <XAxis dataKey="date" fontSize={chartTimeScale !== 'daily' ? 10 : 12}/>
-                                    <YAxis />
+                                    <YAxis domain={totalTrendDomain as any} />
                                     <Tooltip 
                                          contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
                                     />
-                                    <Line type="monotone" dataKey="Toplam" stroke="#4f46e5" strokeWidth={3} dot={{r:4}} />
+                                    <ReferenceLine 
+                                        y={targetThreshold} 
+                                        stroke="red" 
+                                        strokeDasharray="3 3"
+                                        label={{ position: 'insideTopRight', value: `Hedef: ${targetThreshold}`, fill: '#ef4444', fontSize: 12, fontWeight: 'bold' }} 
+                                    />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="Toplam" 
+                                        stroke="#4f46e5" 
+                                        strokeWidth={3} 
+                                        dot={{r:4}} 
+                                    />
                                 </LineChart>
                             </ResponsiveContainer>
                          ) : (
@@ -1017,7 +1183,22 @@ const QuestionTracking: React.FC = () => {
                                 <TrendingUp className="text-green-600" />
                                 Doğru Başarı Oranı (%)
                             </h3>
-                            <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-4">
+                                <div className="px-3 py-1 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-sm">
+                                    %{correctThresholdStats.above + correctThresholdStats.below > 0 
+                                        ? Math.round((correctThresholdStats.above / (correctThresholdStats.above + correctThresholdStats.below)) * 100) 
+                                        : 0} Başarı
+                                </div>
+                                <div className="flex items-center gap-3 text-sm mr-4">
+                                    <span className="flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">
+                                        <CheckCircle size={14} /> {correctThresholdStats.above}
+                                    </span>
+                                    <span className="flex items-center gap-1 text-red-500 font-bold bg-red-50 px-2 py-1 rounded">
+                                        <XCircle size={14} /> {correctThresholdStats.below}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2 ml-auto">
                                 <TimeScaleControls />
                                 <select 
                                     className="text-xs border border-slate-200 rounded-lg py-1.5 px-3 bg-slate-50 text-slate-700 outline-none focus:ring-1 focus:ring-indigo-500"
@@ -1037,6 +1218,7 @@ const QuestionTracking: React.FC = () => {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={correctTrendData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <ReferenceArea y1={correctRateDomain[0]} y2={85} fill="#fee2e2" fillOpacity={0.5} stroke="none" />
                                         <XAxis dataKey="date" fontSize={chartTimeScale !== 'daily' ? 10 : 12}/>
                                         <YAxis domain={correctRateDomain} />
                                         <Tooltip 
@@ -1044,6 +1226,7 @@ const QuestionTracking: React.FC = () => {
                                              formatter={(value: number) => [`%${value}`, 'Doğru Oranı']}
                                         />
                                         <Legend />
+                                        <ReferenceLine y={85} stroke="red" strokeDasharray="3 3" />
                                         <Line type="monotone" dataKey="value" name="Doğru Oranı" stroke="#10b981" strokeWidth={3} dot={{r:4}} activeDot={{r: 6}} />
                                     </LineChart>
                                 </ResponsiveContainer>
@@ -1062,7 +1245,22 @@ const QuestionTracking: React.FC = () => {
                                 <TrendingUp className="text-red-500" />
                                 Yanlış Oranı (%)
                             </h3>
-                            <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-4">
+                                <div className="px-3 py-1 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-sm">
+                                    %{incorrectThresholdStats.good + incorrectThresholdStats.bad > 0 
+                                        ? Math.round((incorrectThresholdStats.good / (incorrectThresholdStats.good + incorrectThresholdStats.bad)) * 100) 
+                                        : 0} Başarı
+                                </div>
+                                <div className="flex items-center gap-3 text-sm mr-4">
+                                    <span className="flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">
+                                        <CheckCircle size={14} /> {incorrectThresholdStats.good}
+                                    </span>
+                                    <span className="flex items-center gap-1 text-red-500 font-bold bg-red-50 px-2 py-1 rounded">
+                                        <XCircle size={14} /> {incorrectThresholdStats.bad}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2 ml-auto">
                                 <TimeScaleControls />
                                 <select 
                                     className="text-xs border border-slate-200 rounded-lg py-1.5 px-3 bg-slate-50 text-slate-700 outline-none focus:ring-1 focus:ring-indigo-500"
@@ -1082,6 +1280,7 @@ const QuestionTracking: React.FC = () => {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={incorrectTrendData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <ReferenceArea y1={15} y2={incorrectRateDomain[1]} fill="#fee2e2" fillOpacity={0.5} stroke="none" />
                                         <XAxis dataKey="date" fontSize={chartTimeScale !== 'daily' ? 10 : 12}/>
                                         <YAxis domain={incorrectRateDomain} />
                                         <Tooltip 
@@ -1089,6 +1288,7 @@ const QuestionTracking: React.FC = () => {
                                              formatter={(value: number) => [`%${value}`, 'Yanlış Oranı']}
                                         />
                                         <Legend />
+                                        <ReferenceLine y={15} stroke="red" strokeDasharray="3 3" />
                                         <Line type="monotone" dataKey="value" name="Yanlış Oranı" stroke="#ef4444" strokeWidth={3} dot={{r:4}} activeDot={{r: 6}} />
                                     </LineChart>
                                 </ResponsiveContainer>
