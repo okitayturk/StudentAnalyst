@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../services/db';
 import { Student, ExamResult } from '../types';
-import { Trash2, UserPlus, Search, Users, Eye } from 'lucide-react';
-import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Trash2, UserPlus, Search, Users, Eye, BarChart2, Calendar } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Link } from 'react-router-dom';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -15,7 +15,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                 <div className="flex items-center gap-2">
                      <span 
                         className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: data.type === 'TYT' ? '#0ea5e9' : data.type.includes('AYT') ? '#f43f5e' : '#4f46e5' }}
+                        style={{ 
+                            backgroundColor: data.type === 'TYT' ? '#0ea5e9' : 
+                                           data.type.includes('AYT') ? '#f43f5e' : 
+                                           data.type === 'Ortalama' ? '#f59e0b' : '#4f46e5' 
+                        }}
                      ></span>
                      <span className="font-semibold text-slate-700">Puan: {Number(data.score).toFixed(3)}</span>
                 </div>
@@ -33,8 +37,10 @@ const Students: React.FC = () => {
   
   // Selected student for details
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [studentStats, setStudentStats] = useState<any[]>([]);
   const [studentExams, setStudentExams] = useState<ExamResult[]>([]);
+  
+  // Chart View Mode
+  const [viewMode, setViewMode] = useState<'daily' | 'monthly'>('daily');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -71,7 +77,6 @@ const Students: React.FC = () => {
         loadStudents();
         if (selectedStudent?.id === id) {
             setSelectedStudent(null);
-            setStudentStats([]);
             setStudentExams([]);
         }
     }
@@ -80,23 +85,6 @@ const Students: React.FC = () => {
   const handleSelectStudent = async (student: Student) => {
       setSelectedStudent(student);
       const exams = await db.getExamsByStudent(student.id);
-      
-      // Sort exams by date for the chart
-      const sortedExams = [...exams].sort((a, b) => a.examDate.localeCompare(b.examDate));
-
-      const stats = sortedExams.map(exam => {
-          // Format date as DD/MM for chart labels
-          const [year, month, day] = exam.examDate.split('-');
-          return {
-              name: `${day}/${month}`,
-              fullDate: exam.examDate, // Keep full date for tooltip
-              score: exam.totalScore,
-              examName: exam.examName,
-              type: exam.type
-          };
-      });
-
-      setStudentStats(stats);
       setStudentExams(exams);
   };
 
@@ -113,6 +101,71 @@ const Students: React.FC = () => {
     s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
     s.schoolNumber.includes(searchTerm)
   );
+
+  // Calculate Chart Data based on View Mode
+  const chartData = useMemo(() => {
+      if (!selectedStudent || studentExams.length === 0) return [];
+      
+      const sortedExams = [...studentExams].sort((a, b) => a.examDate.localeCompare(b.examDate));
+
+      if (viewMode === 'daily') {
+          return sortedExams.map(exam => {
+              const [year, month, day] = exam.examDate.split('-');
+              return {
+                  name: `${day}/${month}`,
+                  fullDate: exam.examDate,
+                  score: exam.totalScore,
+                  examName: exam.examName,
+                  type: exam.type,
+                  rawDate: exam.examDate
+              };
+          });
+      } else {
+          // Monthly Aggregation
+          const grouped: Record<string, { total: number; count: number; rawDate: string }> = {};
+
+          sortedExams.forEach(exam => {
+              const monthKey = exam.examDate.substring(0, 7); // YYYY-MM
+              if (!grouped[monthKey]) {
+                  grouped[monthKey] = { total: 0, count: 0, rawDate: monthKey };
+              }
+              grouped[monthKey].total += exam.totalScore;
+              grouped[monthKey].count += 1;
+          });
+
+          return Object.values(grouped)
+              .sort((a, b) => a.rawDate.localeCompare(b.rawDate))
+              .map(item => {
+                  const [y, m] = item.rawDate.split('-');
+                  const dateObj = new Date(parseInt(y), parseInt(m) - 1);
+                  // Format month name in Turkish
+                  const monthName = dateObj.toLocaleString('tr-TR', { month: 'long' });
+                  
+                  return {
+                      name: monthName,
+                      fullDate: `${monthName} ${y}`,
+                      score: item.total / item.count,
+                      examName: `${item.count} Sınav Ortalaması`,
+                      type: 'Ortalama'
+                  };
+              });
+      }
+  }, [studentExams, viewMode, selectedStudent]);
+
+  // Calculate Y-Axis Domain based on max score in the current data
+  const yAxisDomain = useMemo(() => {
+      if (chartData.length === 0) return [0, 'auto'];
+      
+      const maxScore = Math.max(...chartData.map(s => Number(s.score)));
+
+      if (maxScore <= 300) {
+          return [150, 300];
+      } else if (maxScore <= 500) {
+          return [150, 500];
+      } else {
+          return [200, 650];
+      }
+  }, [chartData]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)]">
@@ -176,30 +229,56 @@ const Students: React.FC = () => {
                 </div>
 
                 <div>
-                    <div className="flex justify-between items-end mb-4">
-                        <h3 className="text-lg font-semibold text-slate-800">Kişisel Gelişim Grafiği</h3>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4">
+                        <div className="flex items-center gap-4">
+                            <h3 className="text-lg font-semibold text-slate-800">Kişisel Gelişim Grafiği</h3>
+                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                <button 
+                                    onClick={() => setViewMode('daily')}
+                                    className={`px-3 py-1 text-xs font-bold rounded-md transition ${viewMode === 'daily' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Günlük
+                                </button>
+                                <button 
+                                    onClick={() => setViewMode('monthly')}
+                                    className={`px-3 py-1 text-xs font-bold rounded-md transition ${viewMode === 'monthly' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Aylık
+                                </button>
+                            </div>
+                        </div>
+                        
                         {/* Legend */}
                         <div className="flex items-center gap-3 text-xs">
-                             <div className="flex items-center gap-1">
-                                <span className="w-3 h-3 rounded-full bg-[#0ea5e9]"></span>
-                                <span className="text-slate-600 font-medium">TYT</span>
-                             </div>
-                             <div className="flex items-center gap-1">
-                                <span className="w-3 h-3 rounded-full bg-[#f43f5e]"></span>
-                                <span className="text-slate-600 font-medium">AYT</span>
-                             </div>
-                             <div className="flex items-center gap-1">
-                                <span className="w-3 h-3 rounded-full bg-[#4f46e5]"></span>
-                                <span className="text-slate-600 font-medium">Diğer</span>
-                             </div>
+                             {viewMode === 'daily' ? (
+                                 <>
+                                     <div className="flex items-center gap-1">
+                                        <span className="w-3 h-3 rounded-full bg-[#0ea5e9]"></span>
+                                        <span className="text-slate-600 font-medium">TYT</span>
+                                     </div>
+                                     <div className="flex items-center gap-1">
+                                        <span className="w-3 h-3 rounded-full bg-[#f43f5e]"></span>
+                                        <span className="text-slate-600 font-medium">AYT</span>
+                                     </div>
+                                     <div className="flex items-center gap-1">
+                                        <span className="w-3 h-3 rounded-full bg-[#4f46e5]"></span>
+                                        <span className="text-slate-600 font-medium">Diğer</span>
+                                     </div>
+                                 </>
+                             ) : (
+                                <div className="flex items-center gap-1">
+                                    <span className="w-3 h-3 rounded-full bg-[#f59e0b]"></span>
+                                    <span className="text-slate-600 font-medium">Aylık Ortalama</span>
+                                </div>
+                             )}
                         </div>
                     </div>
 
                     {/* Explicit Height Container */}
                     <div className="w-full h-80 bg-slate-50 rounded-lg p-4 border border-slate-100 mb-6">
-                        {studentStats.length > 0 ? (
+                        {chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={studentStats} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                     <XAxis 
                                         dataKey="name" 
@@ -214,19 +293,40 @@ const Students: React.FC = () => {
                                         stroke="#64748b" 
                                         tickLine={false}
                                         axisLine={false}
-                                        domain={[0, 'auto']}
+                                        domain={yAxisDomain}
                                     />
-                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9' }} />
-                                    <Bar dataKey="score" radius={[4, 4, 0, 0]} barSize={40}>
-                                        {studentStats.map((entry, index) => {
-                                            let color = '#4f46e5'; // Default (LGS/General)
-                                            if (entry.type === 'TYT') color = '#0ea5e9'; // Blue for TYT
-                                            else if (entry.type && entry.type.includes('AYT')) color = '#f43f5e'; // Red/Rose for AYT
+                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="score" 
+                                        stroke={viewMode === 'monthly' ? "#f59e0b" : "#4f46e5"} 
+                                        strokeWidth={3}
+                                        activeDot={{ r: 6 }}
+                                        dot={(props: any) => {
+                                            const { cx, cy, payload } = props;
+                                            let fill = '#4f46e5';
                                             
-                                            return <Cell key={`cell-${index}`} fill={color} />;
-                                        })}
-                                    </Bar>
-                                </BarChart>
+                                            if (viewMode === 'monthly') {
+                                                fill = '#f59e0b'; // Amber for average
+                                            } else {
+                                                if (payload.type === 'TYT') fill = '#0ea5e9';
+                                                else if (payload.type && payload.type.includes('AYT')) fill = '#f43f5e';
+                                            }
+                                            
+                                            return (
+                                                <circle 
+                                                    key={props.key}
+                                                    cx={cx} 
+                                                    cy={cy} 
+                                                    r={5} 
+                                                    fill={fill} 
+                                                    stroke="white" 
+                                                    strokeWidth={2} 
+                                                />
+                                            );
+                                        }}
+                                    />
+                                </LineChart>
                             </ResponsiveContainer>
                         ) : (
                             <div className="h-full flex items-center justify-center text-slate-400">Henüz deneme verisi yok.</div>
